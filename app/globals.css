@@ -1,0 +1,418 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-geist-sans);
+  --font-display: var(--font-geist-sans);
+  --color-paper: var(--paper);
+  --color-paper-2: var(--paper-2);
+  --color-rule: var(--rule);
+  --color-mark: var(--mark);
+  --color-mark-soft: var(--mark-soft);
+  --color-mark-glow: var(--mark-glow);
+  --color-correct: var(--correct);
+  --color-correct-soft: var(--correct-soft);
+  --color-gold: var(--gold);
+  --color-gold-soft: var(--gold-soft);
+  --shadow-ink: var(--shadow-ink);
+  --shadow-pen: var(--shadow-pen);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/* ----------------------------------------------------------------------
+ * Editorial Workbook palette
+ * Warm parchment paper, deep ink text, a single crimson "teacher's pen"
+ * accent for emphasis and feedback. Surfaces are a hair brighter than the
+ * page so cards read like sheets of paper laid on a desk.
+ * ---------------------------------------------------------------------- */
+:root {
+  --paper: oklch(0.953 0.022 80);            /* warm cream */
+  --paper-2: oklch(0.97 0.018 75);           /* light gold cream */
+  --rule: oklch(0.83 0.020 50);              /* warm hairline */
+  --mark: oklch(0.50 0.21 27);               /* crimson red pen */
+  --mark-soft: oklch(0.90 0.07 30);          /* crimson tint */
+  --mark-glow: oklch(0.55 0.22 27 / 0.18);   /* crimson aura for shadows */
+  --correct: oklch(0.45 0.13 155);           /* forest ink check */
+  --correct-soft: oklch(0.92 0.06 150);      /* check tint */
+  --gold: oklch(0.74 0.13 80);               /* old-paper gold */
+  --gold-soft: oklch(0.92 0.07 80);
+
+  --background: var(--paper);
+  --foreground: oklch(0.18 0.022 50);        /* warm dark ink */
+  --card: oklch(0.99 0.014 80);              /* page-on-page */
+  --card-foreground: oklch(0.18 0.022 50);
+  --popover: oklch(0.99 0.014 80);
+  --popover-foreground: oklch(0.18 0.022 50);
+  --primary: var(--mark);
+  --primary-foreground: oklch(0.99 0.014 80);
+  --secondary: oklch(0.91 0.018 70);
+  --secondary-foreground: oklch(0.22 0.020 50);
+  --muted: oklch(0.92 0.018 70);
+  --muted-foreground: oklch(0.42 0.022 50);
+  --accent: oklch(0.90 0.07 30);
+  --accent-foreground: oklch(0.22 0.020 50);
+  --destructive: oklch(0.52 0.21 27);
+  --border: var(--rule);
+  --input: oklch(0.84 0.020 50);
+  --ring: oklch(0.55 0.18 27);
+  --chart-1: oklch(0.50 0.21 27);
+  --chart-2: oklch(0.45 0.13 155);
+  --chart-3: oklch(0.65 0.12 80);
+  --chart-4: oklch(0.74 0.10 50);
+  --chart-5: oklch(0.30 0.025 50);
+  --radius: 0.5rem;
+  --shadow-ink: 0 1px 0 oklch(0.20 0.020 50 / 0.04),
+                0 6px 18px -8px oklch(0.30 0.025 50 / 0.10);
+  --shadow-pen: 0 1px 0 oklch(0.20 0.020 50 / 0.04),
+                0 12px 28px -10px oklch(0.55 0.22 27 / 0.22);
+  --sidebar: var(--paper);
+  --sidebar-foreground: oklch(0.18 0.022 50);
+  --sidebar-primary: var(--mark);
+  --sidebar-primary-foreground: oklch(0.99 0.014 80);
+  --sidebar-accent: oklch(0.90 0.07 30);
+  --sidebar-accent-foreground: oklch(0.22 0.020 50);
+  --sidebar-border: var(--rule);
+  --sidebar-ring: oklch(0.55 0.18 27);
+}
+
+.dark {
+  --paper: oklch(0.16 0.022 270);            /* deep midnight ink-blue */
+  --paper-2: oklch(0.20 0.025 270);
+  --rule: oklch(0.30 0.020 270);             /* low-contrast warm rule */
+  --mark: oklch(0.74 0.18 28);               /* warm coral pen */
+  --mark-soft: oklch(0.30 0.10 28);
+  --mark-glow: oklch(0.74 0.18 28 / 0.22);
+  --correct: oklch(0.78 0.14 155);
+  --correct-soft: oklch(0.26 0.07 150);
+  --gold: oklch(0.80 0.13 80);
+  --gold-soft: oklch(0.32 0.06 80);
+
+  --background: var(--paper);
+  --foreground: oklch(0.95 0.014 80);
+  --card: oklch(0.21 0.024 270);
+  --card-foreground: oklch(0.95 0.014 80);
+  --popover: oklch(0.21 0.024 270);
+  --popover-foreground: oklch(0.95 0.014 80);
+  --primary: var(--mark);
+  --primary-foreground: oklch(0.16 0.022 270);
+  --secondary: oklch(0.27 0.022 270);
+  --secondary-foreground: oklch(0.95 0.014 80);
+  --muted: oklch(0.25 0.020 270);
+  --muted-foreground: oklch(0.70 0.018 80);
+  --accent: oklch(0.32 0.11 28);
+  --accent-foreground: oklch(0.95 0.014 80);
+  --destructive: oklch(0.74 0.18 28);
+  --border: var(--rule);
+  --input: oklch(0.30 0.022 270);
+  --ring: oklch(0.66 0.16 28);
+  --chart-1: oklch(0.74 0.18 28);
+  --chart-2: oklch(0.78 0.14 155);
+  --chart-3: oklch(0.78 0.13 80);
+  --chart-4: oklch(0.62 0.06 80);
+  --chart-5: oklch(0.85 0.015 80);
+  --shadow-ink: 0 1px 0 oklch(0 0 0 / 0.30),
+                0 12px 32px -8px oklch(0 0 0 / 0.55);
+  --shadow-pen: 0 1px 0 oklch(0 0 0 / 0.30),
+                0 16px 36px -8px oklch(0.74 0.18 28 / 0.32);
+  --sidebar: var(--paper);
+  --sidebar-foreground: oklch(0.95 0.014 80);
+  --sidebar-primary: var(--mark);
+  --sidebar-primary-foreground: oklch(0.16 0.022 270);
+  --sidebar-accent: oklch(0.32 0.11 28);
+  --sidebar-accent-foreground: oklch(0.95 0.014 80);
+  --sidebar-border: var(--rule);
+  --sidebar-ring: oklch(0.66 0.16 28);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+    font-weight: 500;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Atmosphere & decoration                                              *
+ * ------------------------------------------------------------------ */
+
+/* Visible parchment grain, intensified in dark mode so the deep
+ * midnight surface still reads as paper rather than flat black. */
+.paper-grain {
+  position: relative;
+}
+.paper-grain::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 1px 1px, oklch(0.40 0.02 50 / 0.045) 1px, transparent 0),
+    radial-gradient(circle at 3px 3px, oklch(0.40 0.02 50 / 0.025) 1px, transparent 0);
+  background-size: 4px 4px, 7px 7px;
+  background-position: 0 0, 2px 2px;
+}
+.dark .paper-grain::before {
+  background-image:
+    radial-gradient(circle at 1px 1px, oklch(0.95 0.014 80 / 0.05) 1px, transparent 0),
+    radial-gradient(circle at 3px 3px, oklch(0.95 0.014 80 / 0.025) 1px, transparent 0);
+}
+
+/* A warm bloom in the top-left corner of the auth aside — a wash of
+ * crimson + gold that gives a sense of light coming in through a
+ * library window. */
+.bloom-corner-tl {
+  background-image:
+    radial-gradient(60% 50% at 0% 0%, var(--mark-soft) 0%, transparent 70%),
+    radial-gradient(50% 40% at 100% 100%, var(--gold-soft) 0%, transparent 70%);
+}
+
+/* A diffuse atmospheric wash for any page that should feel "warmed by
+ * lamplight" rather than flat. Used as a body backdrop on the chrome. */
+.atmosphere {
+  background-image:
+    radial-gradient(50% 30% at 90% 0%, var(--mark-soft) 0%, transparent 65%),
+    radial-gradient(40% 30% at 0% 100%, var(--gold-soft) 0%, transparent 65%);
+  background-attachment: fixed;
+}
+
+/* Numbered "step" counter used in the exam and results pages. Renders a
+ * small serif numeral, lining tabular nums. */
+.step-counter {
+  font-family: var(--font-display);
+  font-feature-settings: "lnum", "tnum";
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+/* ------------------------------------------------------------------ *
+ * Motion                                                               *
+ * ------------------------------------------------------------------ */
+
+@keyframes ink-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes ink-write {
+  from { opacity: 0; transform: translateY(6px); filter: blur(4px); }
+  to   { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+@keyframes ink-pop {
+  0%   { opacity: 0; transform: scale(0.7); }
+  60%  { opacity: 1; transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+@keyframes mark-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--mark-glow); }
+  50%      { box-shadow: 0 0 0 6px transparent; }
+}
+@keyframes shimmer-rule {
+  0%   { background-position: -100% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.anim-rise { animation: ink-rise 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.anim-write { animation: ink-write 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.anim-pop { animation: ink-pop 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+
+/* Used on the SectionRule component so the hairline shimmers in once */
+.shimmer-rule {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--rule) 35%,
+    var(--mark-soft) 50%,
+    var(--rule) 65%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer-rule 3.6s ease-in-out infinite;
+}
+
+/* Stagger reveals for a list of cards. Wrap children with .stagger-in
+ * and they will fade in with progressive delay. */
+.stagger-children > * {
+  animation: ink-rise 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.stagger-children > *:nth-child(1) { animation-delay: 0.04s; }
+.stagger-children > *:nth-child(2) { animation-delay: 0.10s; }
+.stagger-children > *:nth-child(3) { animation-delay: 0.16s; }
+.stagger-children > *:nth-child(4) { animation-delay: 0.22s; }
+.stagger-children > *:nth-child(5) { animation-delay: 0.28s; }
+.stagger-children > *:nth-child(6) { animation-delay: 0.34s; }
+.stagger-children > *:nth-child(7) { animation-delay: 0.40s; }
+.stagger-children > *:nth-child(n+8) { animation-delay: 0.46s; }
+
+/* Hover lift used on cards / list rows — a soft pen-warm shadow plus a
+ * crimson hairline along the left edge. Apply via the .lift utility. */
+.lift {
+  transition:
+    transform 220ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    box-shadow 220ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    border-color 220ms ease;
+  position: relative;
+}
+.lift::after {
+  content: "";
+  position: absolute;
+  inset-block: 12%;
+  left: 0;
+  width: 2px;
+  background: var(--mark);
+  opacity: 0;
+  border-radius: 2px;
+  transition: opacity 220ms ease;
+}
+.lift:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-pen);
+}
+.lift:hover::after { opacity: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-rise, .anim-write, .anim-pop,
+  .stagger-children > *,
+  .shimmer-rule { animation: none; }
+  .lift { transition: none; }
+}
+
+/* Smooth color transitions when toggling between light/dark. */
+html.theme-transition,
+html.theme-transition * {
+  transition: background-color 220ms ease, color 220ms ease, border-color 220ms ease;
+}
+
+/* ------------------------------------------------------------------ *
+ * Notebook & math surfaces                                             *
+ * ------------------------------------------------------------------ */
+
+/* Ruled-paper background. Use on the student work surface — every
+ * solution line sits on its own faint horizontal rule, like a school
+ * notebook. The leading red margin emulates a workbook left margin. */
+.notebook-rules {
+  background-image:
+    linear-gradient(to right, transparent 0, transparent 1.6rem,
+                    var(--mark) 1.6rem, var(--mark) calc(1.6rem + 1px),
+                    transparent calc(1.6rem + 1px)),
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent calc(2rem - 1px),
+      oklch(from var(--rule) l c h / 0.55) calc(2rem - 1px),
+      oklch(from var(--rule) l c h / 0.55) 2rem
+    );
+  background-position: 0 0, 0 0.5rem;
+}
+
+/* Faint graph-paper grid for the problem statement card — gives the
+ * "here's the math" surface a hint of an engineering pad. */
+.graph-paper {
+  background-image:
+    linear-gradient(oklch(from var(--rule) l c h / 0.35) 1px, transparent 1px),
+    linear-gradient(90deg, oklch(from var(--rule) l c h / 0.35) 1px, transparent 1px);
+  background-size: 1.5rem 1.5rem;
+}
+
+/* The "math monogram" used as a faint decoration on problem cards —
+ * slightly serif-y mathematical glyphs in display font. */
+.math-monogram {
+  font-feature-settings: "lnum", "tnum";
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+/* Accuracy ring — a circular SVG stroked with --ring-color and a
+ * background track. The ring's percentage is fed through the
+ * --pct CSS variable (0–100). */
+.accuracy-ring {
+  --pct: 0;
+  --ring-color: var(--correct);
+  --track: oklch(from var(--rule) l c h / 0.5);
+  background:
+    conic-gradient(var(--ring-color) calc(var(--pct) * 1%), var(--track) 0);
+}
+.accuracy-ring::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: 9999px;
+  background: var(--card);
+}
+
+/* Progress-rail dot used in the exam sidebar */
+.rail-dot {
+  position: relative;
+}
+.rail-dot::before {
+  content: "";
+  position: absolute;
+  left: -1.45rem;
+  top: 0.4rem;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 9999px;
+  border: 2px solid var(--rule);
+  background: var(--card);
+}
+.rail-dot[data-state="active"]::before {
+  border-color: var(--mark);
+  background: var(--mark);
+  box-shadow: 0 0 0 4px var(--mark-soft);
+}
+.rail-dot[data-state="done"]::before {
+  border-color: var(--correct);
+  background: var(--correct);
+}
+.rail-dot[data-state="error"]::before {
+  border-color: var(--mark);
+  background: var(--mark);
+}
