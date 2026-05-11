@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ArrowRight, Plus, Users } from "lucide-react";
+import { ArrowRight, BarChart3, Plus, Users } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { AppShell, PageHeader, SectionRule } from "@/components/app-shell";
 import { ScoreBadge } from "@/components/score-badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -28,6 +28,8 @@ export default function AdminOverview() {
 }
 
 function Inner() {
+  const t = useTranslations("admin.overview");
+  const tCommon = useTranslations("common");
   const [exams, setExams] = useState<ExamSummary[] | null>(null);
   const [students, setStudents] = useState<StudentSummary[] | null>(null);
   const [subs, setSubs] = useState<SubmissionSummary[] | null>(null);
@@ -50,46 +52,58 @@ function Inner() {
   return (
     <>
       <PageHeader
-        eyebrow="Faculty"
-        title="Teacher’s desk."
-        description="At a glance: who&rsquo;s enrolled, what they&rsquo;ve attempted, and where the class is struggling."
+        eyebrow={t("eyebrow")}
+        title={t("title")}
+        description={t("description")}
         action={
-          <Link href="/admin/exams/new" className={buttonVariants()}>
-            <Plus className="h-3.5 w-3.5" />
-            New exam
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/admin/analytics"
+              className={buttonVariants({ variant: "outline" })}
+            >
+              <BarChart3 className="h-3.5 w-3.5" />
+              {t("analytics")}
+            </Link>
+            <Link href="/admin/exams/new" className={buttonVariants()}>
+              <Plus className="h-3.5 w-3.5" />
+              {t("newExam")}
+            </Link>
+          </div>
         }
       />
 
       {error && (
         <Alert variant="destructive" className="mb-8">
-          <AlertTitle>Error</AlertTitle>
+          <AlertTitle>{tCommon("error")}</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
       <section className="stagger-children grid gap-4 sm:grid-cols-3 mb-12">
         <BigStat
-          label="Students"
+          label={t("stats.students")}
           value={students == null ? "—" : String(students.length)}
           accent="ink"
         />
         <BigStat
-          label="Exams"
+          label={t("stats.exams")}
           value={exams == null ? "—" : String(exams.length)}
           accent="gold"
         />
         <BigStat
-          label="Class accuracy"
+          label={t("stats.classAccuracy")}
           value={
             totalLines === 0 ? "—" : `${Math.round((totalScore / totalLines) * 100)}%`
           }
-          hint={`${totalScore} / ${totalLines} graded lines`}
+          hint={t("stats.linesGraded", {
+            score: totalScore,
+            total: totalLines,
+          })}
           accent="mark"
         />
       </section>
 
-      <SectionRule label="I · Exams" />
+      <SectionRule label={t("sectionExams")} />
       <div className="stagger-children grid gap-3 sm:grid-cols-2">
         {exams === null ? (
           <Skeleton className="h-24 w-full" />
@@ -103,12 +117,14 @@ function Inner() {
               <div className="flex items-baseline justify-between gap-3">
                 <div>
                   <div className="font-mono text-[10px] uppercase tracking-[0.28em] text-mark">
-                    Exam {exam.id.toString().padStart(2, "0")}
+                    {tCommon("examNumber", {
+                      number: exam.id.toString().padStart(2, "0"),
+                    })}
                   </div>
                   <div className="font-display text-xl">{exam.title}</div>
                 </div>
                 <span className="font-display text-sm tabular-nums text-muted-foreground">
-                  {exam.question_count} Q
+                  {tCommon("questionsShort", { count: exam.question_count })}
                 </span>
               </div>
               {exam.description && (
@@ -119,13 +135,13 @@ function Inner() {
         )}
       </div>
 
-      <SectionRule label="II · Recent submissions" />
+      <SectionRule label={t("sectionRecent")} />
       <div className="stagger-children space-y-2 mb-10">
         {subs === null ? (
           <Skeleton className="h-24 w-full" />
         ) : subs.length === 0 ? (
           <p className="text-sm text-muted-foreground italic">
-            No submissions yet.
+            {t("noSubmissions")}
           </p>
         ) : (
           subs.slice(0, 8).map((s) => (
@@ -151,7 +167,7 @@ function Inner() {
                 <ScoreBadge score={s.score} total={s.total} size="sm" />
               ) : (
                 <span className="font-mono text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
-                  In progress
+                  {t("inProgress")}
                 </span>
               )}
             </Link>
@@ -159,13 +175,13 @@ function Inner() {
         )}
       </div>
 
-      <SectionRule label="III · Students" />
+      <SectionRule label={t("sectionStudents")} />
       <div className="space-y-2">
         {students === null ? (
           <Skeleton className="h-24 w-full" />
         ) : students.length === 0 ? (
           <p className="text-sm text-muted-foreground italic">
-            No students have registered yet.
+            {t("noStudents")}
           </p>
         ) : (
           students.slice(0, 8).map((s) => (
@@ -192,7 +208,10 @@ function Inner() {
               </div>
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
                 <span className="font-mono tabular-nums">
-                  {s.submission_count} attempt{s.submission_count === 1 ? "" : "s"}
+                  {t(
+                    s.submission_count === 1 ? "attempts_one" : "attempts_other",
+                    { count: s.submission_count },
+                  )}
                 </span>
                 <ArrowRight className="h-3.5 w-3.5" />
               </div>
@@ -205,7 +224,7 @@ function Inner() {
             className={buttonVariants({ variant: "ghost", size: "sm" })}
           >
             <Users className="h-3.5 w-3.5" />
-            All students
+            {t("allStudents")}
           </Link>
         )}
       </div>

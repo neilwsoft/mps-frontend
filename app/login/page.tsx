@@ -3,17 +3,21 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { LocaleSwitcher } from "@/components/locale-switcher";
 import { useAuth } from "@/lib/auth";
 
 export default function LoginPage() {
   const { login, user, status } = useAuth();
   const router = useRouter();
+  const t = useTranslations("auth.login");
+  const tFields = useTranslations("auth.fields");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +37,7 @@ export default function LoginPage() {
       const u = await login(email.trim(), password);
       router.replace(u.role === "admin" ? "/admin" : "/dashboard");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
+      setError(err instanceof Error ? err.message : t("errorFallback"));
     } finally {
       setSubmitting(false);
     }
@@ -41,14 +45,14 @@ export default function LoginPage() {
 
   return (
     <AuthChrome
-      eyebrow="Sign in"
-      title="Welcome back to the workbook."
-      subtitle="Pick up exactly where you left off — your last attempt is waiting."
+      eyebrow={t("eyebrow")}
+      title={t("title")}
+      subtitle={t("subtitle")}
       footer={
         <p className="text-sm text-muted-foreground">
-          New here?{" "}
+          {t("footerPrompt")}{" "}
           <Link href="/register" className="text-mark underline-offset-4 hover:underline">
-            Create a student account
+            {t("footerLink")}
           </Link>
           .
         </p>
@@ -56,7 +60,7 @@ export default function LoginPage() {
     >
       <form onSubmit={onSubmit} className="space-y-5">
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email">{tFields("email")}</Label>
           <Input
             id="email"
             type="email"
@@ -64,11 +68,11 @@ export default function LoginPage() {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@school.edu"
+            placeholder={tFields("emailPlaceholder")}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
+          <Label htmlFor="password">{tFields("password")}</Label>
           <Input
             id="password"
             type="password"
@@ -80,12 +84,12 @@ export default function LoginPage() {
         </div>
         {error && (
           <Alert variant="destructive">
-            <AlertTitle>Couldn&rsquo;t sign in</AlertTitle>
+            <AlertTitle>{t("errorTitle")}</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
         <Button type="submit" disabled={submitting} className="w-full" size="lg">
-          {submitting ? "Signing in…" : "Sign in"}
+          {submitting ? t("submitting") : t("submit")}
         </Button>
       </form>
     </AuthChrome>
@@ -105,14 +109,19 @@ export function AuthChrome({
   children: React.ReactNode;
   footer?: React.ReactNode;
 }) {
+  const tCommon = useTranslations("common");
+  const tChrome = useTranslations("auth.chrome");
   return (
     <div className="min-h-screen grid lg:grid-cols-[1.1fr_1fr] bg-background relative">
-      <div className="absolute right-4 top-4 z-10">
+      <div className="absolute right-4 top-4 z-10 flex items-center gap-2">
+        <LocaleSwitcher />
         <ThemeToggle />
       </div>
       <aside className="hidden lg:flex flex-col justify-between border-r border-rule p-12 paper-grain bloom-corner-tl">
         <div className="flex items-baseline gap-3">
-          <span className="font-display text-xl font-semibold tracking-tight">Math Practice</span>
+          <span className="font-display text-xl font-semibold tracking-tight">
+            {tCommon("appName")}
+          </span>
         </div>
         <div className="space-y-6 max-w-md relative">
           <span
@@ -122,19 +131,19 @@ export function AuthChrome({
             ¶
           </span>
           <p className="font-display text-5xl font-semibold leading-[1.05] tracking-tight anim-write">
-            A quiet room.
+            {tChrome("tagline1")}
             <br />
-            <span className="text-mark">Clear margins.</span>
+            <span className="text-mark">{tChrome("tagline2")}</span>
             <br />
-            One line at a time.
+            {tChrome("tagline3")}
           </p>
           <div className="h-px w-24 shimmer-rule" />
           <p className="font-mono text-xs leading-relaxed uppercase tracking-[0.18em] text-muted-foreground anim-rise">
-            Show your work · type or photograph it · we mark every line and tell you why
+            {tChrome("subTagline")}
           </p>
         </div>
         <p className="text-xs font-mono uppercase tracking-[0.28em] text-muted-foreground">
-          K–12 · Algebra · Step-by-step
+          {tChrome("footer")}
         </p>
       </aside>
       <section className="flex items-center justify-center px-6 py-10 sm:p-12">

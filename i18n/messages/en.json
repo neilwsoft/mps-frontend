@@ -1,0 +1,364 @@
+{
+  "common": {
+    "appName": "Math Practice",
+    "signOut": "Sign out",
+    "language": "Language",
+    "back": "Back",
+    "cancel": "Cancel",
+    "submit": "Submit",
+    "save": "Save",
+    "loading": "Loading…",
+    "error": "Error",
+    "retry": "Retry",
+    "examNumber": "Exam {number}",
+    "questionNumber": "Question {number}",
+    "stepsCount": "{count} steps",
+    "stepCount_one": "{count} step",
+    "stepCount_other": "{count} steps",
+    "questionsShort": "{count} Q"
+  },
+  "roles": {
+    "student": "Student",
+    "admin": "Admin"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "overview": "Overview",
+    "students": "Students",
+    "newExam": "New exam"
+  },
+  "auth": {
+    "login": {
+      "eyebrow": "Sign in",
+      "title": "Welcome back to the workbook.",
+      "subtitle": "Pick up exactly where you left off — your last attempt is waiting.",
+      "submit": "Sign in",
+      "submitting": "Signing in…",
+      "errorTitle": "Couldn't sign in",
+      "errorFallback": "Login failed",
+      "footerPrompt": "New here?",
+      "footerLink": "Create a student account"
+    },
+    "register": {
+      "eyebrow": "New student",
+      "title": "Open a fresh notebook.",
+      "subtitle": "A free account; your work is saved between sessions and visible to your teacher.",
+      "fullName": "Full name",
+      "namePlaceholder": "Jordan Park",
+      "passwordHint": "At least 6 characters.",
+      "submit": "Create account",
+      "submitting": "Creating account…",
+      "errorTitle": "Couldn't register",
+      "errorFallback": "Registration failed",
+      "footerPrompt": "Already enrolled?",
+      "footerLink": "Sign in"
+    },
+    "fields": {
+      "email": "Email",
+      "password": "Password",
+      "emailPlaceholder": "you@school.edu"
+    },
+    "chrome": {
+      "tagline1": "A quiet room.",
+      "tagline2": "Clear margins.",
+      "tagline3": "One line at a time.",
+      "subTagline": "Show your work · type or photograph it · we mark every line and tell you why",
+      "footer": "K–12 · Algebra · Step-by-step"
+    }
+  },
+  "dashboard": {
+    "eyebrowFallback": "student",
+    "eyebrow": "Hello, {name}",
+    "title": "Your workbook.",
+    "description": "Pick an exam to start a fresh attempt, or revisit a graded one to see your line-by-line feedback.",
+    "nextUp": "Next up",
+    "beginAttempt": "Begin attempt",
+    "starting": "Starting…",
+    "accuracy": "Accuracy",
+    "lifetime": "Lifetime",
+    "stepsAcrossExams_one": "steps correct across {count} exam",
+    "stepsAcrossExams_other": "steps correct across {count} exams",
+    "errorTitle": "Could not load dashboard",
+    "errorStartFallback": "Could not start exam",
+    "sectionAvailable": "I · Available exams",
+    "sectionAttempts": "II · Your attempts",
+    "noExamsPublished": "No exams have been published yet — check back soon.",
+    "noAttempts": "You haven't taken any exams yet.",
+    "graded": "Graded",
+    "inProgress": "In progress",
+    "resume": "Resume →"
+  },
+  "exam": {
+    "header": {
+      "submitGrade": "Submit & grade",
+      "submitting": "Submitting…",
+      "stepsProgress": "{submitted} / {total} steps"
+    },
+    "errorStartTitle": "Could not start exam",
+    "errorLoadFallback": "Failed to load exam",
+    "errorFinalizeFallback": "Could not finalize",
+    "errorSubmitFallback": "Could not submit line",
+    "aside": {
+      "worksheet": "Worksheet",
+      "questions": "Questions",
+      "questionsSummary": "{count} Q · {correct}✓",
+      "defaultDescription": "Solve each problem step-by-step. Each line is checked.",
+      "stopHint": "{submitted}/{total} steps",
+      "stopHintWrong": "{submitted}/{total} steps · {wrong} off"
+    },
+    "question": {
+      "label": "Question {number} · Simplify",
+      "stepProgress": "step {current} / {total}"
+    },
+    "notebook": {
+      "yourWork": "Your work",
+      "willAppear": "Your worked solution will appear here, line by line.",
+      "nextStep": "Next step",
+      "stepInputAria": "Solution line {number}",
+      "checkLine": "Check this line",
+      "checking": "Checking…",
+      "rawLatex": "raw LaTeX",
+      "empty": "(empty)",
+      "doneTitle": "Question logged",
+      "doneAll": "All {count} steps submitted.",
+      "continueNext": "Continue to question {number} →",
+      "donePrompt": "Submit & grade when you're ready."
+    },
+    "hint": {
+      "buttonIdle": "Hint (-1 point)",
+      "buttonShown": "Hint shown",
+      "buttonTitle": "Get a hint (-1 point)",
+      "alertTitle": "Hint",
+      "errorFallback": "Could not get a hint right now."
+    },
+    "scratchpad": {
+      "title": "Scratchpad",
+      "subtitle": "saved per question · auto-save",
+      "placeholder": "Jot intermediate work here — only you can see it."
+    },
+    "partialCredit": "partial credit · {pct}%",
+    "handwriting": {
+      "title": "Handwriting",
+      "tabDraw": "Draw",
+      "tabUpload": "Upload",
+      "uploadPrompt": "Click to upload a photo",
+      "uploadFormats": "PNG, JPG, WebP, HEIC",
+      "reading": "Reading lines…",
+      "errorTitle": "Could not read it",
+      "errorReadFallback": "Failed to read image",
+      "errorVerifyFallback": "Verify failed",
+      "detectedHeader": "Detected — review then submit",
+      "editLowConfidence": "edit any low-confidence line before submit",
+      "lineLabel": "Line {number}",
+      "remove": "Remove",
+      "submitDetected": "Submit detected lines",
+      "submittingDetected": "Submitting…",
+      "discard": "Discard",
+      "draw": {
+        "placeholder": "Write your next step here",
+        "ariaLabel": "Handwriting canvas",
+        "recognize": "Recognize",
+        "reading": "Reading…",
+        "undo": "Undo",
+        "clear": "Clear"
+      }
+    }
+  },
+  "results": {
+    "submissionEyebrow": "Submission #{id}",
+    "errorTitle": "Could not load results",
+    "descriptionAdmin": "Submitted by {name} ({email}).",
+    "descriptionStudent": "Your line-by-line results. Wrong lines stay in place — read the note to learn why.",
+    "back": "Back",
+    "perQuestionDetail": "Per-question detail",
+    "questionLabel": "Question {number}",
+    "perQuestionScore": "{correct} / {total} correct",
+    "hintsUsedTitle": "Hints used: {count}",
+    "hintsUsedDescription": "Each hint reduced the final score by one point.",
+    "partial": "partial · {pct}%",
+    "override": {
+      "tag": "overridden",
+      "byName": "by {name}",
+      "openIdle": "Override grade",
+      "openExisting": "Change override",
+      "reasonPlaceholder": "Reason for override (will be logged)",
+      "markCorrect": "Mark correct",
+      "markWrong": "Mark wrong",
+      "cancel": "Cancel",
+      "errorNoReason": "Please add a short reason for the override.",
+      "errorFallback": "Override failed"
+    }
+  },
+  "admin": {
+    "overview": {
+      "eyebrow": "Faculty",
+      "title": "Teacher's desk.",
+      "description": "At a glance: who's enrolled, what they've attempted, and where the class is struggling.",
+      "newExam": "New exam",
+      "analytics": "Analytics",
+      "stats": {
+        "students": "Students",
+        "exams": "Exams",
+        "classAccuracy": "Class accuracy",
+        "linesGraded": "{score} / {total} graded lines"
+      },
+      "sectionExams": "I · Exams",
+      "sectionRecent": "II · Recent submissions",
+      "sectionStudents": "III · Students",
+      "noSubmissions": "No submissions yet.",
+      "noStudents": "No students have registered yet.",
+      "inProgress": "In progress",
+      "allStudents": "All students",
+      "attempts_one": "{count} attempt",
+      "attempts_other": "{count} attempts"
+    },
+    "students": {
+      "eyebrow": "Faculty",
+      "title": "Class roster.",
+      "description": "Every registered student. Click a row to see their attempts and scores.",
+      "errorTitle": "Could not load students",
+      "noStudents": "No students yet.",
+      "th": {
+        "student": "Student",
+        "email": "Email",
+        "attempts": "Attempts",
+        "lines": "Lines",
+        "accuracy": "Accuracy",
+        "joined": "Joined"
+      }
+    },
+    "studentDetail": {
+      "errorTitle": "Could not load student",
+      "eyebrow": "Student record",
+      "joined": "joined {date}",
+      "allStudents": "All students",
+      "stats": {
+        "attempts": "Attempts",
+        "graded": "Graded",
+        "accuracy": "Accuracy",
+        "linesHint": "{score} / {total} lines"
+      },
+      "submissions": "Submissions",
+      "noAttempts": "This student hasn't taken any exams yet.",
+      "graded": "Graded",
+      "inProgress": "In progress",
+      "pending": "pending",
+      "expanded": {
+        "accuracy": "Accuracy",
+        "linesCorrectHint": "{correct}/{total} lines correct",
+        "examsFinalized": "Exams finalized",
+        "examsAttemptedHint": "{count} attempted",
+        "timeOnTask": "Time on task",
+        "timeOnTaskHint": "Across all exams",
+        "hintsUsed": "Hints used",
+        "hintsUsedHint": "Each costs 1 point",
+        "scoreTrend": "Score trend",
+        "perTopic": "Per-topic mastery",
+        "perQuestion": "Per-question performance",
+        "thExam": "Exam",
+        "thPrompt": "Prompt",
+        "thAttempts": "Attempts",
+        "thAccuracy": "Accuracy",
+        "thAvgTime": "Avg time",
+        "linesSuffix": "{count} lines",
+        "secondsSuffix": "{seconds}s",
+        "hintsSuffix_one": "{count} hint",
+        "hintsSuffix_other": "{count} hints"
+      }
+    },
+    "examDetail": {
+      "errorTitle": "Could not load exam",
+      "back": "Back",
+      "sectionModel": "I · Model solutions",
+      "sectionSubmissions": "II · Student submissions",
+      "questionLabel": "Question {number}",
+      "stepsCount": "{count} steps",
+      "noAttempts": "No one has attempted this exam yet.",
+      "inProgress": "In progress",
+      "clone": "Clone exam",
+      "cloning": "Cloning…",
+      "cloneError": "Clone failed",
+      "metrics": {
+        "title": "Question quality metrics",
+        "empty": "No attempts yet — metrics will appear once students submit lines.",
+        "thNumber": "#",
+        "thPrompt": "Prompt",
+        "thAttempts": "Attempts",
+        "thPctCorrect": "% correct",
+        "thAvgTime": "Avg time"
+      }
+    },
+    "newExam": {
+      "eyebrow": "Worksheet composer",
+      "title": "Compose a new exam.",
+      "description": "Add questions on the left, draft each step on the right. The student preview shows what learners see while taking the exam.",
+      "cancel": "Cancel",
+      "fields": {
+        "title": "Worksheet title",
+        "titlePlaceholder": "Algebra · Bracket expansion",
+        "descriptionLabel": "Short description (optional)",
+        "descriptionPlaceholder": "A short note shown to students before they begin."
+      },
+      "outline": "Outline",
+      "outlineSummary": "{questions} Q · {steps} steps",
+      "untitledQuestion": "Untitled question",
+      "stepStatus": {
+        "ready": "ready",
+        "draft": "draft",
+        "empty": "empty"
+      },
+      "stepsCount_one": "{count} step",
+      "stepsCount_other": "{count} steps",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "removeQuestion": "Remove question",
+      "removeStep": "Remove step",
+      "addQuestion": "Add question",
+      "questionEdit": "edit",
+      "promptLabel": "Problem statement (LaTeX)",
+      "promptPlaceholder": "x^2 - [2x + \\{(x^2 - 1) - (2x^2 + 1)\\}]",
+      "stepsLabel": "Solution steps",
+      "stepsReady": "{count} ready",
+      "stepPlaceholder": "x^2 - \\{2x + (-x^2 - 2)\\}",
+      "addStep": "Add step",
+      "stepHelp": "Each step is the LaTeX expression on the right of the = sign. Students see the prompt only — the steps are graded against their submitted lines.",
+      "studentPreview": "Student preview",
+      "previewSubtitle": "what they'll see",
+      "previewSimplify": "Question {number} · Simplify",
+      "previewPromptHere": "prompt appears here",
+      "previewLineHere": "Students enter line 1 of {total} here.",
+      "previewFooter": "The model solution stays hidden from learners. They're marked line-by-line against the steps you draft.",
+      "errorTitle": "Cannot publish",
+      "errorTitleRequired": "Worksheet title is required.",
+      "errorPromptRequired": "Question {number}: prompt is required.",
+      "errorStepsRequired": "Question {number}: at least one solution step is required.",
+      "errorPublishFallback": "Could not publish",
+      "readyCount": "{ready} of {total} questions ready · {steps} graded steps",
+      "publish": "Publish worksheet",
+      "publishing": "Publishing…",
+      "variants": {
+        "title": "Generate variants with AI",
+        "easier": "Easier",
+        "same": "Same level",
+        "harder": "Harder",
+        "help": "Uses the active question as a seed. Click \"Add to exam\" to insert a generated variant as a new question.",
+        "loading": "Asking Gemini for variants…",
+        "stepCount_one": "{count} step",
+        "stepCount_other": "{count} steps",
+        "addToExam": "Add to exam",
+        "needSeed": "Fill in the prompt and at least one step before generating variants.",
+        "errorFallback": "Could not generate variants."
+      }
+    },
+    "analytics": {
+      "eyebrow": "Analytics",
+      "title": "Class insights",
+      "description": "Per-topic mastery across students. Hint and override events feed back into per-question metrics on each exam page.",
+      "back": "Back",
+      "errorTitle": "Failed to load analytics",
+      "heatmapTitle": "Topic mastery heatmap",
+      "empty": "No data yet — tag a few questions with topics, then have students take those exams. The heatmap appears here once submissions land.",
+      "thStudent": "Student"
+    }
+  }
+}

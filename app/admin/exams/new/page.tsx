@@ -7,11 +7,14 @@ import {
   ArrowLeft,
   ArrowUp,
   CheckCircle2,
+  Loader2,
   Plus,
+  Sparkles,
   Trash2,
   X,
 } from "lucide-react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,7 +24,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { MathExpr } from "@/components/math";
-import { createExam } from "@/lib/api";
+import { adminGenerateVariants, createExam } from "@/lib/api";
 
 type DraftQuestion = {
   prompt: string;
@@ -40,12 +43,17 @@ export default function NewExamPage() {
 
 function Composer() {
   const router = useRouter();
+  const t = useTranslations("admin.newExam");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [questions, setQuestions] = useState<DraftQuestion[]>([EMPTY_QUESTION()]);
   const [activeIdx, setActiveIdx] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [variants, setVariants] = useState<
+    { prompt_latex: string; solution_latex: string[] }[]
+  >([]);
 
   const active = questions[activeIdx];
 
@@ -97,6 +105,37 @@ function Composer() {
     else if (activeIdx === j) setActiveIdx(i);
   }
 
+  async function generateVariants(delta: -1 | 0 | 1) {
+    setError(null);
+    const seedSteps = active.steps.map((s) => s.trim()).filter(Boolean);
+    if (!active.prompt.trim() || seedSteps.length === 0) {
+      setError(t("variants.needSeed"));
+      return;
+    }
+    setGenerating(true);
+    try {
+      const v = await adminGenerateVariants(
+        { prompt_latex: active.prompt.trim(), solution_latex: seedSteps },
+        4,
+        delta,
+      );
+      setVariants(v);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("variants.errorFallback"));
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  function adoptVariant(v: { prompt_latex: string; solution_latex: string[] }) {
+    setQuestions((prev) => [
+      ...prev,
+      { prompt: v.prompt_latex, steps: v.solution_latex.length ? v.solution_latex : [""] },
+    ]);
+    setActiveIdx(questions.length);
+    setVariants((curr) => curr.filter((c) => c !== v));
+  }
+
   function questionStatus(q: DraftQuestion): "ok" | "partial" | "empty" {
     const steps = q.steps.map((s) => s.trim()).filter(Boolean);
     if (!q.prompt.trim() && steps.length === 0) return "empty";
@@ -108,16 +147,16 @@ function Composer() {
     e.preventDefault();
     setError(null);
 
-    if (!title.trim()) return setError("Worksheet title is required.");
+    if (!title.trim()) return setError(t("errorTitleRequired"));
     const cleaned = questions.map((q) => ({
       prompt_latex: q.prompt.trim(),
       solution_latex: q.steps.map((s) => s.trim()).filter(Boolean),
     }));
     for (const [i, q] of cleaned.entries()) {
       if (!q.prompt_latex)
-        return setError(`Question ${i + 1}: prompt is required.`);
+        return setError(t("errorPromptRequired", { number: i + 1 }));
       if (q.solution_latex.length === 0)
-        return setError(`Question ${i + 1}: at least one solution step is required.`);
+        return setError(t("errorStepsRequired", { number: i + 1 }));
     }
 
     setSubmitting(true);
@@ -129,7 +168,7 @@ function Composer() {
       });
       router.replace(`/admin/exams/${res.id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not publish");
+      setError(err instanceof Error ? err.message : t("errorPublishFallback"));
       setSubmitting(false);
     }
   }
@@ -142,16 +181,16 @@ function Composer() {
   return (
     <>
       <PageHeader
-        eyebrow="Worksheet composer"
-        title="Compose a new exam."
-        description="Add questions on the left, draft each step on the right. The student preview shows what learners see while taking the exam."
+        eyebrow={t("eyebrow")}
+        title={t("title")}
+        description={t("description")}
         action={
           <Link
             href="/admin"
             className={buttonVariants({ variant: "ghost", size: "sm" })}
           >
             <ArrowLeft className="h-3.5 w-3.5" />
-            Cancel
+            {t("cancel")}
           </Link>
         }
       />
@@ -159,22 +198,22 @@ function Composer() {
       <Card className="mb-6">
         <CardContent className="py-2 grid gap-4 lg:grid-cols-[2fr_3fr]">
           <div className="space-y-2">
-            <Label htmlFor="title">Worksheet title</Label>
+            <Label htmlFor="title">{t("fields.title")}</Label>
             <Input
               id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Algebra · Bracket expansion"
+              placeholder={t("fields.titlePlaceholder")}
               required
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="description">Short description (optional)</Label>
+            <Label htmlFor="description">{t("fields.descriptionLabel")}</Label>
             <Input
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="A short note shown to students before they begin."
+              placeholder={t("fields.descriptionPlaceholder")}
             />
           </div>
         </CardContent>
@@ -186,10 +225,13 @@ function Composer() {
           <aside className="space-y-3 lg:sticky lg:top-24 self-start">
             <div className="flex items-baseline justify-between border-b border-rule pb-2">
               <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-mark">
-                Outline
+                {t("outline")}
               </span>
               <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground tabular-nums">
-                {questions.length} Q · {totalSteps} steps
+                {t("outlineSummary", {
+                  questions: questions.length,
+                  steps: totalSteps,
+                })}
               </span>
             </div>
 
@@ -219,14 +261,23 @@ function Composer() {
                       </span>
                       <span className="flex-1 space-y-0.5 overflow-hidden">
                         <span className="block truncate font-display text-sm font-medium leading-tight">
-                          {q.prompt.trim() || "Untitled question"}
+                          {q.prompt.trim() || t("untitledQuestion")}
                         </span>
                         <span className="block font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground tabular-nums">
-                          {q.steps.filter((s) => s.trim()).length} step
-                          {q.steps.filter((s) => s.trim()).length === 1 ? "" : "s"}
-                          {status === "ok" && " · ready"}
-                          {status === "partial" && " · draft"}
-                          {status === "empty" && " · empty"}
+                          {(() => {
+                            const n = q.steps.filter((s) => s.trim()).length;
+                            const stepsText = t(
+                              n === 1 ? "stepsCount_one" : "stepsCount_other",
+                              { count: n },
+                            );
+                            const tag =
+                              status === "ok"
+                                ? ` · ${t("stepStatus.ready")}`
+                                : status === "partial"
+                                  ? ` · ${t("stepStatus.draft")}`
+                                  : ` · ${t("stepStatus.empty")}`;
+                            return `${stepsText}${tag}`;
+                          })()}
                         </span>
                       </span>
                       {status === "ok" && (
@@ -241,7 +292,7 @@ function Composer() {
                           size="icon-xs"
                           onClick={() => moveQuestion(i, -1)}
                           disabled={i === 0}
-                          aria-label="Move up"
+                          aria-label={t("moveUp")}
                         >
                           <ArrowUp className="h-3 w-3" />
                         </Button>
@@ -251,7 +302,7 @@ function Composer() {
                           size="icon-xs"
                           onClick={() => moveQuestion(i, 1)}
                           disabled={i === questions.length - 1}
-                          aria-label="Move down"
+                          aria-label={t("moveDown")}
                         >
                           <ArrowDown className="h-3 w-3" />
                         </Button>
@@ -262,7 +313,7 @@ function Composer() {
                           size="icon-xs"
                           onClick={() => removeQuestion(i)}
                           disabled={questions.length === 1}
-                          aria-label="Remove question"
+                          aria-label={t("removeQuestion")}
                         >
                           <Trash2 className="h-3 w-3" />
                         </Button>
@@ -281,7 +332,7 @@ function Composer() {
               className="w-full"
             >
               <Plus className="h-3.5 w-3.5" />
-              Add question
+              {t("addQuestion")}
             </Button>
           </aside>
 
@@ -290,20 +341,20 @@ function Composer() {
             <CardContent className="py-2 space-y-5">
               <div className="flex items-baseline justify-between border-b border-rule pb-2">
                 <div className="font-mono text-[10px] uppercase tracking-[0.28em] text-mark">
-                  Question {activeIdx + 1}
+                  {t("previewSimplify", { number: activeIdx + 1 }).split(" · ")[0]}
                 </div>
                 <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                  edit
+                  {t("questionEdit")}
                 </span>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="prompt">Problem statement (LaTeX)</Label>
+                <Label htmlFor="prompt">{t("promptLabel")}</Label>
                 <Textarea
                   id="prompt"
                   rows={2}
                   className="font-mono text-sm"
-                  placeholder="x^2 - [2x + \\{(x^2 - 1) - (2x^2 + 1)\\}]"
+                  placeholder={t("promptPlaceholder")}
                   value={active.prompt}
                   onChange={(e) => patchActive({ prompt: e.target.value })}
                 />
@@ -311,9 +362,11 @@ function Composer() {
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label>Solution steps</Label>
+                  <Label>{t("stepsLabel")}</Label>
                   <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground tabular-nums">
-                    {active.steps.filter((s) => s.trim()).length} ready
+                    {t("stepsReady", {
+                      count: active.steps.filter((s) => s.trim()).length,
+                    })}
                   </span>
                 </div>
 
@@ -331,7 +384,7 @@ function Composer() {
                           <Input
                             value={step}
                             onChange={(e) => setStep(i, e.target.value)}
-                            placeholder="x^2 - \\{2x + (-x^2 - 2)\\}"
+                            placeholder={t("stepPlaceholder")}
                             className="font-mono text-xs"
                           />
                           {step.trim() && (
@@ -347,7 +400,7 @@ function Composer() {
                             size="icon-xs"
                             onClick={() => moveStep(i, -1)}
                             disabled={i === 0}
-                            aria-label="Move up"
+                            aria-label={t("moveUp")}
                           >
                             <ArrowUp className="h-3 w-3" />
                           </Button>
@@ -357,7 +410,7 @@ function Composer() {
                             size="icon-xs"
                             onClick={() => moveStep(i, 1)}
                             disabled={i === active.steps.length - 1}
-                            aria-label="Move down"
+                            aria-label={t("moveDown")}
                           >
                             <ArrowDown className="h-3 w-3" />
                           </Button>
@@ -367,7 +420,7 @@ function Composer() {
                             size="icon-xs"
                             onClick={() => removeStep(i)}
                             disabled={active.steps.length === 1}
-                            aria-label="Remove step"
+                            aria-label={t("removeStep")}
                           >
                             <X className="h-3 w-3" />
                           </Button>
@@ -383,14 +436,81 @@ function Composer() {
                   onClick={addStep}
                 >
                   <Plus className="h-3.5 w-3.5" />
-                  Add step
+                  {t("addStep")}
                 </Button>
-                <p className="text-xs text-muted-foreground">
-                  Each step is the LaTeX expression on the right of the
-                  <code className="mx-1 rounded bg-muted px-1 font-mono">=</code>
-                  sign. Students see the prompt only — the steps are graded
-                  against their submitted lines.
-                </p>
+                <p className="text-xs text-muted-foreground">{t("stepHelp")}</p>
+              </div>
+
+              <div className="space-y-2 rounded-md border border-dashed border-mark/40 bg-mark-soft/10 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.24em] text-mark">
+                    <Sparkles className="h-3 w-3" />
+                    {t("variants.title")}
+                  </span>
+                  <div className="flex flex-wrap gap-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={generating}
+                      onClick={() => generateVariants(-1)}
+                    >
+                      {t("variants.easier")}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={generating}
+                      onClick={() => generateVariants(0)}
+                    >
+                      {t("variants.same")}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={generating}
+                      onClick={() => generateVariants(1)}
+                    >
+                      {t("variants.harder")}
+                    </Button>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">{t("variants.help")}</p>
+                {generating && (
+                  <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    {t("variants.loading")}
+                  </p>
+                )}
+                {variants.length > 0 && (
+                  <ol className="space-y-2">
+                    {variants.map((v, i) => (
+                      <li
+                        key={i}
+                        className="rounded border border-rule bg-card/40 p-2 space-y-1"
+                      >
+                        <div className="overflow-x-auto rounded bg-background p-2 text-base">
+                          <MathExpr latex={v.prompt_latex} display />
+                        </div>
+                        <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                          {t("variants.stepCount", { count: v.solution_latex.length })}
+                        </div>
+                        <div className="flex justify-end">
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => adoptVariant(v)}
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                            {t("variants.addToExam")}
+                          </Button>
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -399,55 +519,58 @@ function Composer() {
           <aside className="space-y-3 lg:sticky lg:top-24 self-start">
             <div className="flex items-baseline justify-between border-b border-rule pb-2">
               <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-mark">
-                Student preview
+                {t("studentPreview")}
               </span>
               <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                what they&apos;ll see
+                {t("previewSubtitle")}
               </span>
             </div>
             <Card>
               <CardContent className="py-2 space-y-3">
                 <div className="font-mono text-[10px] uppercase tracking-[0.28em] text-mark">
-                  Question {activeIdx + 1} · Simplify
+                  {t("previewSimplify", { number: activeIdx + 1 })}
                 </div>
                 <div className="rounded-md border border-rule bg-card graph-paper p-4 text-lg min-h-[3rem]">
                   {active.prompt.trim() ? (
                     <MathExpr latex={active.prompt} display />
                   ) : (
                     <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                      prompt appears here
+                      {t("previewPromptHere")}
                     </span>
                   )}
                 </div>
                 <div className="rounded-md border border-rule bg-card notebook-rules px-2 py-3 min-h-[6rem]">
                   <p className="px-3 py-2 text-xs text-muted-foreground italic">
-                    Students enter line {active.steps.filter(s => s.trim()).length > 0 ? "1" : "1"} of {Math.max(1, active.steps.filter(s => s.trim()).length)} here.
+                    {t("previewLineHere", {
+                      total: Math.max(1, active.steps.filter((s) => s.trim()).length),
+                    })}
                   </p>
                 </div>
               </CardContent>
             </Card>
             <p className="px-1 text-[11px] text-muted-foreground">
-              The model solution stays hidden from learners. They&apos;re marked
-              line-by-line against the steps you draft.
+              {t("previewFooter")}
             </p>
           </aside>
         </div>
 
         {error && (
           <Alert variant="destructive" className="mt-6">
-            <AlertTitle>Cannot publish</AlertTitle>
+            <AlertTitle>{t("errorTitle")}</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
 
         <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-rule pt-6">
           <p className="text-xs text-muted-foreground">
-            {questions.filter((q) => questionStatus(q) === "ok").length} of{" "}
-            {questions.length} questions ready ·{" "}
-            <span className="font-mono">{totalSteps}</span> graded steps
+            {t("readyCount", {
+              ready: questions.filter((q) => questionStatus(q) === "ok").length,
+              total: questions.length,
+              steps: totalSteps,
+            })}
           </p>
           <Button type="submit" disabled={submitting} size="lg">
-            {submitting ? "Publishing…" : "Publish worksheet"}
+            {submitting ? t("publishing") : t("publish")}
           </Button>
         </div>
       </form>

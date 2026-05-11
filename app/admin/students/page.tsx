@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -17,6 +18,7 @@ export default function StudentsListPage() {
 }
 
 function Inner() {
+  const t = useTranslations("admin.students");
   const [students, setStudents] = useState<StudentSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,13 +31,13 @@ function Inner() {
   return (
     <>
       <PageHeader
-        eyebrow="Faculty"
-        title="Class roster."
-        description="Every registered student. Click a row to see their attempts and scores."
+        eyebrow={t("eyebrow")}
+        title={t("title")}
+        description={t("description")}
       />
       {error && (
         <Alert variant="destructive">
-          <AlertTitle>Could not load students</AlertTitle>
+          <AlertTitle>{t("errorTitle")}</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
@@ -43,12 +45,12 @@ function Inner() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-rule bg-mark-soft/30">
-              <Th>Student</Th>
-              <Th>Email</Th>
-              <Th className="text-right">Attempts</Th>
-              <Th className="text-right">Lines</Th>
-              <Th className="text-right">Accuracy</Th>
-              <Th className="text-right">Joined</Th>
+              <Th>{t("th.student")}</Th>
+              <Th>{t("th.email")}</Th>
+              <Th className="text-right">{t("th.attempts")}</Th>
+              <Th className="text-right">{t("th.lines")}</Th>
+              <Th className="text-right">{t("th.accuracy")}</Th>
+              <Th className="text-right">{t("th.joined")}</Th>
             </tr>
           </thead>
           <tbody>
@@ -61,7 +63,7 @@ function Inner() {
             ) : students.length === 0 ? (
               <tr>
                 <td colSpan={6} className="p-6 text-center text-sm text-muted-foreground italic">
-                  No students yet.
+                  {t("noStudents")}
                 </td>
               </tr>
             ) : (

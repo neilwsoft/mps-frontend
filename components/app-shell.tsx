@@ -4,11 +4,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { LogOut } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { LocaleSwitcher } from "@/components/locale-switcher";
 
 type Props = {
   children: React.ReactNode;
@@ -24,6 +26,9 @@ type Props = {
 export function AppShell({ children, requireRole }: Props) {
   const { user, status, logout } = useAuth();
   const router = useRouter();
+  const tCommon = useTranslations("common");
+  const tNav = useTranslations("nav");
+  const tRoles = useTranslations("roles");
 
   useEffect(() => {
     if (status !== "ready") return;
@@ -59,27 +64,30 @@ export function AppShell({ children, requireRole }: Props) {
             className="flex items-baseline gap-3 group"
           >
             <span className="font-display text-xl font-semibold leading-none tracking-tight">
-              Math Practice
+              {tCommon("appName")}
             </span>
           </Link>
           <nav className="flex items-center gap-1 text-sm">
             {user.role === "admin" ? (
               <>
-                <ShellLink href="/admin">Overview</ShellLink>
-                <ShellLink href="/admin/students">Students</ShellLink>
-                <ShellLink href="/admin/exams/new">New exam</ShellLink>
+                <ShellLink href="/admin">{tNav("overview")}</ShellLink>
+                <ShellLink href="/admin/students">{tNav("students")}</ShellLink>
+                <ShellLink href="/admin/exams/new">{tNav("newExam")}</ShellLink>
               </>
             ) : (
               <>
-                <ShellLink href="/dashboard">Dashboard</ShellLink>
+                <ShellLink href="/dashboard">{tNav("dashboard")}</ShellLink>
               </>
             )}
             <span className="mx-2 hidden h-5 w-px bg-rule sm:inline-block" />
             <span className="hidden text-xs text-muted-foreground sm:inline-block">
               {user.name}
               <span className="mx-1 text-rule">·</span>
-              <span className="uppercase tracking-[0.18em]">{user.role}</span>
+              <span className="uppercase tracking-[0.18em]">
+                {tRoles(user.role)}
+              </span>
             </span>
+            <LocaleSwitcher />
             <ThemeToggle />
             <Button
               variant="ghost"
@@ -88,10 +96,10 @@ export function AppShell({ children, requireRole }: Props) {
                 logout();
                 router.replace("/login");
               }}
-              aria-label="Sign out"
+              aria-label={tCommon("signOut")}
             >
               <LogOut className="h-3.5 w-3.5" />
-              <span className="sr-only sm:not-sr-only">Sign out</span>
+              <span className="sr-only sm:not-sr-only">{tCommon("signOut")}</span>
             </Button>
           </nav>
         </div>

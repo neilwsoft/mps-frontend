@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ArrowRight, BookOpen, Sparkles } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { AppShell, PageHeader, SectionRule } from "@/components/app-shell";
 import { AccuracyRing } from "@/components/accuracy-ring";
@@ -32,6 +33,8 @@ export default function DashboardPage() {
 function DashboardInner() {
   const { user } = useAuth();
   const router = useRouter();
+  const t = useTranslations("dashboard");
+  const tCommon = useTranslations("common");
   const [exams, setExams] = useState<ExamSummary[] | null>(null);
   const [submissions, setSubmissions] = useState<SubmissionSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -52,7 +55,7 @@ function DashboardInner() {
       const { submission_id } = await startSubmission(examId);
       router.push(`/exam/${examId}?submission=${submission_id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not start exam");
+      setError(err instanceof Error ? err.message : t("errorStartFallback"));
     } finally {
       setStarting(null);
     }
@@ -74,9 +77,11 @@ function DashboardInner() {
   return (
     <>
       <PageHeader
-        eyebrow={`Hello, ${user?.name.split(" ")[0] ?? "student"}`}
-        title="Your workbook."
-        description="Pick an exam to start a fresh attempt, or revisit a graded one to see your line-by-line feedback."
+        eyebrow={t("eyebrow", {
+          name: user?.name.split(" ")[0] ?? t("eyebrowFallback"),
+        })}
+        title={t("title")}
+        description={t("description")}
       />
 
       {/* Hero row: next-up exam beside accuracy ring + tiny stats */}
@@ -90,7 +95,10 @@ function DashboardInner() {
               {nextUp.id.toString().padStart(2, "0")}
             </span>
             <div className="font-mono text-[10px] uppercase tracking-[0.32em] text-mark">
-              Next up · Exam {nextUp.id.toString().padStart(2, "0")}
+              {t("nextUp")} ·{" "}
+              {tCommon("examNumber", {
+                number: nextUp.id.toString().padStart(2, "0"),
+              })}
             </div>
             <h2 className="mt-2 font-display text-3xl font-semibold leading-tight tracking-tight">
               {nextUp.title}
@@ -102,11 +110,11 @@ function DashboardInner() {
             )}
             <div className="mt-5 flex flex-wrap items-center gap-3">
               <Button onClick={() => handleStart(nextUp.id)} disabled={starting !== null}>
-                {starting === nextUp.id ? "Starting…" : "Begin attempt"}
+                {starting === nextUp.id ? t("starting") : t("beginAttempt")}
                 <ArrowRight className="h-3.5 w-3.5" />
               </Button>
               <span className="font-mono text-[11px] uppercase tracking-[0.24em] text-muted-foreground tabular-nums">
-                {nextUp.question_count} questions
+                {tCommon("questionsShort", { count: nextUp.question_count })}
               </span>
             </div>
           </div>
@@ -115,10 +123,10 @@ function DashboardInner() {
         )}
 
         <div className="rounded-xl border border-rule bg-card p-5 flex items-center gap-4">
-          <AccuracyRing pct={accuracyPct} size={104} sublabel="Accuracy" />
+          <AccuracyRing pct={accuracyPct} size={104} sublabel={t("accuracy")} />
           <div className="space-y-1">
             <div className="font-mono text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
-              Lifetime
+              {t("lifetime")}
             </div>
             <p className="font-display text-3xl font-semibold tabular-nums leading-none">
               {totalCorrect}
@@ -126,9 +134,12 @@ function DashboardInner() {
               {totalLines || "—"}
             </p>
             <p className="text-xs text-muted-foreground">
-              steps correct across{" "}
-              <span className="font-mono">{finishedSubs.length}</span> exam
-              {finishedSubs.length === 1 ? "" : "s"}
+              {t(
+                finishedSubs.length === 1
+                  ? "stepsAcrossExams_one"
+                  : "stepsAcrossExams_other",
+                { count: finishedSubs.length },
+              )}
             </p>
           </div>
         </div>
@@ -136,12 +147,12 @@ function DashboardInner() {
 
       {error && (
         <Alert variant="destructive" className="mb-8">
-          <AlertTitle>Could not load dashboard</AlertTitle>
+          <AlertTitle>{t("errorTitle")}</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
-      <SectionRule label="I · Available exams" />
+      <SectionRule label={t("sectionAvailable")} />
 
       <div className="stagger-children grid gap-4 sm:grid-cols-2">
         {exams === null ? (
@@ -151,7 +162,7 @@ function DashboardInner() {
           </>
         ) : exams.length === 0 ? (
           <p className="col-span-full text-sm text-muted-foreground italic">
-            No exams have been published yet — check back soon.
+            {t("noExamsPublished")}
           </p>
         ) : (
           exams.map((exam) => (
@@ -161,14 +172,16 @@ function DashboardInner() {
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.28em] text-mark">
                       <BookOpen className="h-3 w-3" />
-                      Exam {exam.id.toString().padStart(2, "0")}
+                      {tCommon("examNumber", {
+                        number: exam.id.toString().padStart(2, "0"),
+                      })}
                     </div>
                     <h3 className="font-display text-2xl font-medium leading-tight">
                       {exam.title}
                     </h3>
                   </div>
                   <span className="font-display text-sm tabular-nums text-muted-foreground">
-                    {exam.question_count} Q
+                    {tCommon("questionsShort", { count: exam.question_count })}
                   </span>
                 </div>
                 {exam.description && (
@@ -180,7 +193,7 @@ function DashboardInner() {
                   disabled={starting !== null}
                   className="mt-2"
                 >
-                  {starting === exam.id ? "Starting…" : "Begin attempt"}
+                  {starting === exam.id ? t("starting") : t("beginAttempt")}
                   <ArrowRight className="h-3.5 w-3.5" />
                 </Button>
               </CardContent>
@@ -189,14 +202,14 @@ function DashboardInner() {
         )}
       </div>
 
-      <SectionRule label="II · Your attempts" />
+      <SectionRule label={t("sectionAttempts")} />
 
       <div className="stagger-children space-y-3">
         {submissions === null ? (
           <Skeleton className="h-24 w-full" />
         ) : submissions.length === 0 ? (
           <p className="text-sm text-muted-foreground italic">
-            You haven&rsquo;t taken any exams yet.
+            {t("noAttempts")}
           </p>
         ) : (
           submissions.map((s) => (
@@ -209,7 +222,7 @@ function DashboardInner() {
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
                     <Sparkles className="h-3 w-3" />
-                    {s.submitted_at ? "Graded" : "In progress"}
+                    {s.submitted_at ? t("graded") : t("inProgress")}
                     <span className="text-rule">·</span>
                     {new Date(s.started_at + "Z").toLocaleString(undefined, {
                       month: "short",
@@ -225,7 +238,7 @@ function DashboardInner() {
                     <ScoreBadge score={s.score} total={s.total} size="sm" />
                   ) : (
                     <span className="font-mono text-[10px] uppercase tracking-[0.24em] text-mark">
-                      Resume →
+                      {t("resume")}
                     </span>
                   )}
                 </div>

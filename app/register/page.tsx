@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +16,8 @@ import { AuthChrome } from "@/app/login/page";
 export default function RegisterPage() {
   const { register, user, status } = useAuth();
   const router = useRouter();
+  const t = useTranslations("auth.register");
+  const tFields = useTranslations("auth.fields");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -35,7 +38,7 @@ export default function RegisterPage() {
       await register(email.trim(), name.trim(), password);
       router.replace("/dashboard");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Registration failed");
+      setError(err instanceof Error ? err.message : t("errorFallback"));
     } finally {
       setSubmitting(false);
     }
@@ -43,14 +46,14 @@ export default function RegisterPage() {
 
   return (
     <AuthChrome
-      eyebrow="New student"
-      title="Open a fresh notebook."
-      subtitle="A free account; your work is saved between sessions and visible to your teacher."
+      eyebrow={t("eyebrow")}
+      title={t("title")}
+      subtitle={t("subtitle")}
       footer={
         <p className="text-sm text-muted-foreground">
-          Already enrolled?{" "}
+          {t("footerPrompt")}{" "}
           <Link href="/login" className="text-mark underline-offset-4 hover:underline">
-            Sign in
+            {t("footerLink")}
           </Link>
           .
         </p>
@@ -58,7 +61,7 @@ export default function RegisterPage() {
     >
       <form onSubmit={onSubmit} className="space-y-5">
         <div className="space-y-2">
-          <Label htmlFor="name">Full name</Label>
+          <Label htmlFor="name">{t("fullName")}</Label>
           <Input
             id="name"
             type="text"
@@ -66,11 +69,11 @@ export default function RegisterPage() {
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Jordan Park"
+            placeholder={t("namePlaceholder")}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email">{tFields("email")}</Label>
           <Input
             id="email"
             type="email"
@@ -78,11 +81,11 @@ export default function RegisterPage() {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@school.edu"
+            placeholder={tFields("emailPlaceholder")}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
+          <Label htmlFor="password">{tFields("password")}</Label>
           <Input
             id="password"
             type="password"
@@ -92,16 +95,16 @@ export default function RegisterPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-          <p className="text-xs text-muted-foreground">At least 6 characters.</p>
+          <p className="text-xs text-muted-foreground">{t("passwordHint")}</p>
         </div>
         {error && (
           <Alert variant="destructive">
-            <AlertTitle>Couldn&rsquo;t register</AlertTitle>
+            <AlertTitle>{t("errorTitle")}</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
         <Button type="submit" disabled={submitting} className="w-full" size="lg">
-          {submitting ? "Creating account…" : "Create account"}
+          {submitting ? t("submitting") : t("submit")}
         </Button>
       </form>
     </AuthChrome>

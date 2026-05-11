@@ -2,16 +2,18 @@
 
 import Link from "next/link";
 import { use, useEffect, useState } from "react";
-import { ArrowLeft, CheckCircle2, XCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle2, ShieldAlert, XCircle } from "lucide-react";
+import { useTranslations } from "next-intl";
 
 import { AppShell, PageHeader, SectionRule } from "@/components/app-shell";
 import { ScoreBadge } from "@/components/score-badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { MathExpr } from "@/components/math";
 import {
+  adminOverrideLine,
   fetchSubmission,
   finalizeSubmission,
   type SubmissionDetail,
@@ -34,6 +36,7 @@ export default function ResultsPage({
 
 function ResultsInner({ submissionId }: { submissionId: number }) {
   const { user } = useAuth();
+  const t = useTranslations("results");
   const [sub, setSub] = useState<SubmissionDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,20 +54,20 @@ function ResultsInner({ submissionId }: { submissionId: number }) {
         if (!cancelled) setSub(finalSub);
       } catch (err) {
         if (!cancelled)
-          setError(err instanceof Error ? err.message : "Could not load results");
+          setError(err instanceof Error ? err.message : t("errorTitle"));
       }
     }
     void load();
     return () => {
       cancelled = true;
     };
-  }, [submissionId]);
+  }, [submissionId, t]);
 
   if (error)
     return (
       <Alert variant="destructive">
         <XCircle className="h-4 w-4" />
-        <AlertTitle>Could not load results</AlertTitle>
+        <AlertTitle>{t("errorTitle")}</AlertTitle>
         <AlertDescription>{error}</AlertDescription>
       </Alert>
     );
@@ -94,12 +97,17 @@ function ResultsInner({ submissionId }: { submissionId: number }) {
   return (
     <>
       <PageHeader
-        eyebrow={`Submission #${sub.id.toString().padStart(4, "0")}`}
+        eyebrow={t("submissionEyebrow", {
+          id: sub.id.toString().padStart(4, "0"),
+        })}
         title={sub.exam_title}
         description={
           user?.role === "admin"
-            ? `Submitted by ${sub.student_name} (${sub.student_email}).`
-            : "Your line-by-line results. Wrong lines stay in place — read the note to learn why."
+            ? t("descriptionAdmin", {
+                name: sub.student_name,
+                email: sub.student_email,
+              })
+            : t("descriptionStudent")
         }
         action={
           <div className="flex items-center gap-3">
@@ -109,13 +117,22 @@ function ResultsInner({ submissionId }: { submissionId: number }) {
               className={buttonVariants({ variant: "ghost", size: "sm" })}
             >
               <ArrowLeft className="h-3.5 w-3.5" />
-              Back
+              {t("back")}
             </Link>
           </div>
         }
       />
 
-      <SectionRule label="Per-question detail" />
+      <SectionRule label={t("perQuestionDetail")} />
+
+      {sub.hints.length > 0 && (
+        <Alert className="mb-4 border-mark/30">
+          <AlertTitle>
+            {t("hintsUsedTitle", { count: sub.hints.length })}
+          </AlertTitle>
+          <AlertDescription>{t("hintsUsedDescription")}</AlertDescription>
+        </Alert>
+      )}
 
       <div className="space-y-6">
         {questionEntries.map(([qid, lines]) => (
@@ -123,10 +140,19 @@ function ResultsInner({ submissionId }: { submissionId: number }) {
             <CardContent className="space-y-4 py-2">
               <div className="flex items-baseline justify-between border-b border-rule pb-3">
                 <div className="font-mono text-[10px] uppercase tracking-[0.28em] text-mark">
-                  Question {(lines[0].question_position + 1).toString().padStart(2, "0")}
+                  {t("questionLabel", {
+                    number: (lines[0].question_position + 1)
+                      .toString()
+                      .padStart(2, "0"),
+                  })}
                 </div>
                 <div className="font-mono text-xs text-muted-foreground tabular-nums">
-                  {lines.filter((l) => l.correct).length} / {lines.length} correct
+                  {t("perQuestionScore", {
+                    correct: lines.filter(
+                      (l) => (l.override_correct ?? l.correct) === 1,
+                    ).length,
+                    total: lines.length,
+                  })}
                 </div>
               </div>
               <div className="rounded-md border border-rule bg-background/40 p-4 text-2xl">
@@ -137,39 +163,26 @@ function ResultsInner({ submissionId }: { submissionId: number }) {
                   .slice()
                   .sort((a, b) => a.line_index - b.line_index)
                   .map((line) => (
-                    <li
+                    <ResultLineRow
                       key={line.id}
-                      className={`rounded-md border p-3 space-y-2 ${
-                        line.correct
-                          ? "bg-correct-soft border-correct/30"
-                          : "bg-mark-soft/60 border-mark/30"
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <span
-                          className={`step-counter mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs ${
-                            line.correct
-                              ? "bg-correct text-paper"
-                              : "bg-mark text-primary-foreground"
-                          }`}
-                        >
-                          {line.line_index + 1}
-                        </span>
-                        <div className="flex-1 overflow-x-auto">
-                          <MathExpr latex={`= ${line.submitted_latex}`} display />
-                        </div>
-                        {line.correct ? (
-                          <CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-correct" />
-                        ) : (
-                          <XCircle className="mt-1 h-4 w-4 shrink-0 text-mark" />
-                        )}
-                      </div>
-                      {!line.correct && line.explanation && (
-                        <p className="ml-9 text-sm text-mark italic">
-                          {line.explanation}
-                        </p>
-                      )}
-                    </li>
+                      line={line}
+                      isAdmin={user?.role === "admin"}
+                      onScoreChanged={(score, total) =>
+                        setSub((prev) => (prev ? { ...prev, score, total } : prev))
+                      }
+                      onLineUpdated={(patch) =>
+                        setSub((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                lines: prev.lines.map((l) =>
+                                  l.id === line.id ? { ...l, ...patch } : l,
+                                ),
+                              }
+                            : prev,
+                        )
+                      }
+                    />
                   ))}
               </ol>
             </CardContent>
@@ -179,3 +192,167 @@ function ResultsInner({ submissionId }: { submissionId: number }) {
     </>
   );
 }
+
+function ResultLineRow({
+  line,
+  isAdmin,
+  onScoreChanged,
+  onLineUpdated,
+}: {
+  line: SubmissionLine;
+  isAdmin: boolean;
+  onScoreChanged: (score: number, total: number) => void;
+  onLineUpdated: (patch: Partial<SubmissionLine>) => void;
+}) {
+  const t = useTranslations("results");
+  const [editing, setEditing] = useState(false);
+  const [reason, setReason] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const overridden = line.override_correct !== null && line.override_correct !== undefined;
+  const effectiveCorrect = (line.override_correct ?? line.correct) === 1;
+
+  async function applyOverride(correct: boolean) {
+    if (!reason.trim()) {
+      setErr(t("override.errorNoReason"));
+      return;
+    }
+    setSaving(true);
+    setErr(null);
+    try {
+      const res = await adminOverrideLine(line.id, correct, reason.trim());
+      onScoreChanged(res.score, res.total);
+      onLineUpdated({
+        override_correct: correct ? 1 : 0,
+        override_reason: reason.trim(),
+        override_at: new Date().toISOString(),
+      });
+      setEditing(false);
+      setReason("");
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : t("override.errorFallback"));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <li
+      className={`rounded-md border p-3 space-y-2 ${
+        effectiveCorrect
+          ? "bg-correct-soft border-correct/30"
+          : "bg-mark-soft/60 border-mark/30"
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        <span
+          className={`step-counter mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs ${
+            effectiveCorrect
+              ? "bg-correct text-paper"
+              : "bg-mark text-primary-foreground"
+          }`}
+        >
+          {line.line_index + 1}
+        </span>
+        <div className="flex-1 overflow-x-auto">
+          <MathExpr latex={`= ${line.submitted_latex}`} display />
+          {!effectiveCorrect && line.partial_score > 0 && (
+            <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.18em] text-mark">
+              {t("partial", { pct: Math.round(line.partial_score * 100) })}
+            </p>
+          )}
+        </div>
+        {effectiveCorrect ? (
+          <CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-correct" />
+        ) : (
+          <XCircle className="mt-1 h-4 w-4 shrink-0 text-mark" />
+        )}
+      </div>
+      {!line.correct && line.explanation && (
+        <p className="ml-9 text-sm text-mark italic">{line.explanation}</p>
+      )}
+      {overridden && (
+        <div className="ml-9 flex items-start gap-2 rounded border border-mark/30 bg-card/60 p-2 text-xs">
+          <ShieldAlert className="mt-0.5 h-3.5 w-3.5 shrink-0 text-mark" />
+          <div>
+            <span className="font-mono uppercase tracking-[0.18em] text-mark">
+              {t("override.tag")}
+            </span>{" "}
+            {line.override_by_name
+              ? t("override.byName", { name: line.override_by_name })
+              : ""}
+            {line.override_at &&
+              ` · ${new Date(line.override_at + "Z").toLocaleString(undefined, {
+                month: "short",
+                day: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+              })}`}
+            {line.override_reason && (
+              <p className="mt-0.5 italic text-muted-foreground">
+                &ldquo;{line.override_reason}&rdquo;
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+      {isAdmin && (
+        <div className="ml-9 space-y-2">
+          {!editing ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => setEditing(true)}
+            >
+              {overridden ? t("override.openExisting") : t("override.openIdle")}
+            </Button>
+          ) : (
+            <div className="space-y-2 rounded border border-rule bg-card/60 p-2">
+              <textarea
+                className="w-full rounded border border-rule bg-background px-2 py-1 font-mono text-xs"
+                placeholder={t("override.reasonPlaceholder")}
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                rows={2}
+              />
+              {err && <p className="text-xs text-mark">{err}</p>}
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => applyOverride(true)}
+                  disabled={saving}
+                >
+                  {t("override.markCorrect")}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => applyOverride(false)}
+                  disabled={saving}
+                >
+                  {t("override.markWrong")}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setEditing(false);
+                    setErr(null);
+                  }}
+                  disabled={saving}
+                >
+                  {t("override.cancel")}
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </li>
+  );
+}
+
