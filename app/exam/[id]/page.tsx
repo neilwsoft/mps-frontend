@@ -23,9 +23,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { MathExpr } from "@/components/math";
 import { MathField } from "@/components/math-field";
 import { ProgressRail } from "@/components/progress-rail";
-import { DrawCanvas } from "@/components/draw-canvas";
+import { DrawCanvas, type DrawCanvasHandle } from "@/components/draw-canvas";
 import { cn } from "@/lib/utils";
 import {
+  explainLine,
   extractHandwriting,
   fetchExam,
   finalizeSubmission,
@@ -41,10 +42,16 @@ import {
 } from "@/lib/api";
 
 type LineRecord = {
+  /** DB id of this submission attempt — used to update its explanation
+   * asynchronously once Gemini returns the richer tutor message. */
+  id: number;
   latex: string;
   correct: boolean;
   explanation: string | null;
   partialScore: number;
+  /** The line index this attempt was submitted against. Multiple attempts can
+   * share the same lineIndex (retries). */
+  lineIndex: number;
 };
 
 type QuestionState = {
@@ -54,6 +61,10 @@ type QuestionState = {
   hint: string | null;
   hintLoading: boolean;
   scratchpad: string;
+  /** Highest line_index that has been correctly accepted (-1 = none yet). The
+   * student's *next* required input is acceptedThrough + 1. Wrong attempts
+   * append to lines[] but DO NOT advance this counter. */
+  acceptedThrough: number;
 };
 
 type Handwriting = {
@@ -102,6 +113,21 @@ function ExamRunner({ examId }: { examId: number }) {
   // Per-question, per-line "started thinking" timestamp for time_spent_ms.
   const lineStartRef = useRef<Record<number, Record<number, number>>>({});
   const scratchpadSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // In-flight OCR controller — aborted when the student starts a new stroke
+  // while the previous recognize is still en route.
+  const ocrAbortRef = useRef<AbortController | null>(null);
+  // Optimistic-feedback / latency-budget state for the current line.
+  //  • phase = 'reading'  → OCR in flight, no latex yet
+  //  • phase = 'checking' → OCR returned (latex visible), verifier in flight
+  //  • phase = 'done'     → verifier returned (chip fades after a moment)
+  const [flow, setFlow] = useState<{
+    phase: "reading" | "checking" | "done";
+    latex?: string;
+    ocrMs?: number;
+    verifyMs?: number;
+    correct?: boolean;
+  } | null>(null);
+  const flowFadeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Bootstrap: load exam, ensure submission. Accept ?submission=N from
   // the dashboard's "begin attempt" so a refresh on this page doesn't
@@ -122,6 +148,7 @@ function ExamRunner({ examId }: { examId: number }) {
             hint: null,
             hintLoading: false,
             scratchpad: "",
+            acceptedThrough: -1,
           };
         }
         setPerQ(initial);
@@ -222,10 +249,16 @@ function ExamRunner({ examId }: { examId: number }) {
       hint: null,
       hintLoading: false,
       scratchpad: "",
+      acceptedThrough: -1,
     };
   const hw = hwByQ[currentQ.id] ?? INITIAL_HW;
-  const lineIdx = state.lines.length;
+  const lineIdx = state.acceptedThrough + 1; // next line student must write
   const expectedLines = currentQ.expected_line_count;
+  // Most recent attempt at the current line — used to surface the "try again"
+  // explanation when the student is on a retry.
+  const lastAttemptOnCurrent = [...state.lines]
+    .reverse()
+    .find((l) => l.lineIndex === lineIdx);
 
   // Stamp the start time for this (question, line) once.
   if (lineIdx < expectedLines) {
@@ -236,7 +269,7 @@ function ExamRunner({ examId }: { examId: number }) {
     }
   }
   const allQuestionsDone = questions.every(
-    (q) => (perQ[q.id]?.lines.length ?? 0) >= q.expected_line_count,
+    (q) => (perQ[q.id]?.acceptedThrough ?? -1) + 1 >= q.expected_line_count,
   );
 
   // ---- handlers ----
@@ -252,6 +285,7 @@ function ExamRunner({ examId }: { examId: number }) {
           hint: null,
           hintLoading: false,
           scratchpad: "",
+          acceptedThrough: -1,
         },
       ),
     }));
@@ -264,36 +298,107 @@ function ExamRunner({ examId }: { examId: number }) {
     }));
   }
 
-  async function handleSubmitLine() {
-    if (!state.draft.trim() || state.status === "submitting") return;
-    if (lineIdx >= expectedLines) return;
+  async function submitOne(
+    latex: string,
+    opts: { source: "typed" | "handwriting"; ocrConfidence?: number },
+  ): Promise<boolean> {
+    if (!latex.trim() || lineIdx >= expectedLines) return false;
     setQ(currentQ.id, (s) => ({ ...s, status: "submitting" }));
+    // For typed submissions we don't have a prior OCR phase, so set the
+    // optimistic chip to 'checking' directly. For handwriting,
+    // handleHandwritingFile already moved us into 'checking' with ocrMs filled.
+    if (opts.source === "typed") {
+      setFlow({ phase: "checking", latex });
+    } else {
+      setFlow((f) => (f ? { ...f, phase: "checking", latex } : { phase: "checking", latex }));
+    }
+    const verifyStartedAt = Date.now();
     const start = lineStartRef.current[currentQ.id]?.[lineIdx] ?? Date.now();
     try {
       const res = await submitLine(
         submissionId!,
         currentQ.id,
         lineIdx,
-        state.draft,
-        { timeSpentMs: Date.now() - start, source: "typed", locale },
+        latex,
+        {
+          timeSpentMs: Date.now() - start,
+          source: opts.source,
+          ocrConfidence: opts.ocrConfidence,
+          locale,
+        },
       );
+      const verifyMs = Date.now() - verifyStartedAt;
+      setFlow((f) => ({
+        phase: "done",
+        latex,
+        ocrMs: f?.ocrMs,
+        verifyMs,
+        correct: res.correct,
+      }));
+      // Fade the latency chip after a moment so it doesn't linger forever.
+      if (flowFadeTimer.current) clearTimeout(flowFadeTimer.current);
+      flowFadeTimer.current = setTimeout(() => setFlow(null), 2500);
       const record: LineRecord = {
-        latex: state.draft,
+        id: res.line_id,
+        latex,
         correct: res.correct,
         explanation: res.explanation,
         partialScore: res.partial_score,
+        lineIndex: lineIdx,
       };
-      setQ(currentQ.id, (s) => ({
-        ...s,
-        lines: [...s.lines, record],
-        draft: "",
-        hint: null,
-        status: lineIdx + 1 >= expectedLines ? "done" : "idle",
-      }));
+
+      // Wrong verdict → fire the tutor-style Gemini explanation in the
+      // background. The verdict + deterministic baseline are already on
+      // screen; this just swaps in a richer message when (and if) Gemini
+      // returns. Failure is silently ignored.
+      if (!res.correct) {
+        void (async () => {
+          try {
+            const detail = await explainLine(res.line_id, locale);
+            if (!detail.explanation) return;
+            setQ(currentQ.id, (s) => ({
+              ...s,
+              lines: s.lines.map((l) =>
+                l.id === res.line_id ? { ...l, explanation: detail.explanation } : l,
+              ),
+            }));
+          } catch {
+            /* keep baseline explanation */
+          }
+        })();
+      }
+      setQ(currentQ.id, (s) => {
+        // Correct → advance acceptedThrough and reset clock for next line.
+        // Wrong → keep position; clear draft so canvas is ready for retry.
+        const accept = res.correct;
+        const nextAccepted = accept ? lineIdx : s.acceptedThrough;
+        const willBeDone = accept && lineIdx + 1 >= expectedLines;
+        if (accept) {
+          // Reset timing for the next line slot
+          const slot = lineStartRef.current[currentQ.id] ?? {};
+          slot[lineIdx + 1] = Date.now();
+          lineStartRef.current[currentQ.id] = slot;
+        }
+        return {
+          ...s,
+          lines: [...s.lines, record],
+          draft: "",
+          hint: null,
+          acceptedThrough: nextAccepted,
+          status: willBeDone ? "done" : "idle",
+        };
+      });
+      return res.correct;
     } catch (err) {
       setQ(currentQ.id, (s) => ({ ...s, status: "idle" }));
       setError(err instanceof Error ? err.message : t("errorSubmitFallback"));
+      return false;
     }
+  }
+
+  async function handleSubmitLine() {
+    if (state.status === "submitting") return;
+    await submitOne(state.draft, { source: "typed" });
   }
 
   async function handleRequestHint() {
@@ -317,58 +422,73 @@ function ExamRunner({ examId }: { examId: number }) {
       lines: [],
       error: null,
     }));
+    // Show the "reading…" chip immediately so the student has visual proof
+    // the system noticed their handwriting.
+    setFlow({ phase: "reading" });
+    // Stamp OCR start and wire up an abort handle so a new stroke can cancel.
+    const ocrStartedAt = Date.now();
+    const controller = new AbortController();
+    ocrAbortRef.current?.abort();
+    ocrAbortRef.current = controller;
     try {
-      const res = await extractHandwriting(currentQ.id, file);
-      setHw(currentQ.id, (h) => ({ ...h, status: "extracted", lines: res.lines }));
+      const res = await extractHandwriting(currentQ.id, file, {
+        signal: controller.signal,
+      });
+      const ocrMs = Date.now() - ocrStartedAt;
+      if (res.lines.length === 0) {
+        // Empty result == illegible handwriting. Use a clear localized
+        // message; the backend used to blame "the photo" even for canvas
+        // drawings — that string is gone now.
+        setHw(currentQ.id, (h) => ({
+          ...h,
+          status: "error",
+          error: t("handwriting.errorIllegible"),
+        }));
+        setFlow(null);
+        return;
+      }
+      // Capture OCR'd latex + duration so the "checking" chip can render it.
+      setFlow({ phase: "checking", latex: res.lines[0].latex, ocrMs });
+      setHw(currentQ.id, () => INITIAL_HW);
+      for (const entry of res.lines) {
+        const ok = await submitOne(entry.latex, {
+          source: "handwriting",
+          ocrConfidence: entry.confidence,
+        });
+        if (!ok) break; // stop at first wrong line so the student can retry
+      }
     } catch (err) {
+      // Abort: student started writing again; bail quietly.
+      if (err instanceof DOMException && err.name === "AbortError") {
+        setHw(currentQ.id, () => INITIAL_HW);
+        setFlow(null);
+        return;
+      }
       setHw(currentQ.id, (h) => ({
         ...h,
         status: "error",
         error: err instanceof Error ? err.message : t("handwriting.errorReadFallback"),
       }));
+      setFlow(null);
+    } finally {
+      if (ocrAbortRef.current === controller) ocrAbortRef.current = null;
     }
   }
 
   async function handleSubmitHandwriting() {
+    // Manual fallback path — only reachable if the auto-submit flow surfaced
+    // a manual review card (e.g. legacy upload). Submit each line, stop on
+    // first wrong.
     if (hw.lines.length === 0) return;
     setHw(currentQ.id, (h) => ({ ...h, status: "verifying", error: null }));
-    let lineIndex = lineIdx;
-    const remaining = hw.lines.slice(0, expectedLines - lineIdx);
-    for (const entry of remaining) {
-      try {
-        const res: SubmitLineResponse = await submitLine(
-          submissionId!,
-          currentQ.id,
-          lineIndex,
-          entry.latex,
-          { source: "handwriting", ocrConfidence: entry.confidence, locale },
-        );
-        const record: LineRecord = {
-          latex: entry.latex,
-          correct: res.correct,
-          explanation: res.explanation,
-          partialScore: res.partial_score,
-        };
-        setQ(currentQ.id, (s) => ({
-          ...s,
-          lines: [...s.lines, record],
-          status: "idle",
-        }));
-        lineIndex += 1;
-      } catch (err) {
-        setHw(currentQ.id, (h) => ({
-          ...h,
-          status: "extracted",
-          error: err instanceof Error ? err.message : t("handwriting.errorVerifyFallback"),
-        }));
-        return;
-      }
+    for (const entry of hw.lines) {
+      const ok = await submitOne(entry.latex, {
+        source: "handwriting",
+        ocrConfidence: entry.confidence,
+      });
+      if (!ok) break;
     }
     setHw(currentQ.id, () => INITIAL_HW);
-    setQ(currentQ.id, (s) => ({
-      ...s,
-      status: lineIndex >= expectedLines ? "done" : "idle",
-    }));
   }
 
   function updateExtractedLine(i: number, value: string) {
@@ -420,14 +540,10 @@ function ExamRunner({ examId }: { examId: number }) {
     0,
   );
   const totalSubmittedAll = questions.reduce(
-    (acc, q) => acc + (perQ[q.id]?.lines.length ?? 0),
+    (acc, q) => acc + ((perQ[q.id]?.acceptedThrough ?? -1) + 1),
     0,
   );
-  const totalCorrectAll = questions.reduce(
-    (acc, q) =>
-      acc + (perQ[q.id]?.lines.filter((l) => l.correct).length ?? 0),
-    0,
-  );
+  const totalCorrectAll = totalSubmittedAll;
   const overallPct =
     totalExpectedAll === 0
       ? 0
@@ -435,9 +551,9 @@ function ExamRunner({ examId }: { examId: number }) {
 
   const railStops = questions.map((q, i) => {
     const s = perQ[q.id];
-    const submitted = s?.lines.length ?? 0;
+    const accepted = (s?.acceptedThrough ?? -1) + 1;
     const wrong = s?.lines.filter((l) => !l.correct).length ?? 0;
-    const done = submitted >= q.expected_line_count;
+    const done = accepted >= q.expected_line_count;
     return {
       label: tCommon("questionNumber", { number: i + 1 }),
       done,
@@ -445,12 +561,12 @@ function ExamRunner({ examId }: { examId: number }) {
       hint:
         wrong > 0
           ? t("aside.stopHintWrong", {
-              submitted,
+              submitted: accepted,
               total: q.expected_line_count,
               wrong,
             })
           : t("aside.stopHint", {
-              submitted,
+              submitted: accepted,
               total: q.expected_line_count,
             }),
     };
@@ -554,7 +670,34 @@ function ExamRunner({ examId }: { examId: number }) {
             </CardContent>
           </Card>
 
-          {/* Notebook work surface */}
+          {/* Handwriting card — moved to top so it's the first input surface */}
+          {state.status !== "done" && (
+            <HandwritingCard
+              hw={hw}
+              onPickFile={() => fileInputRef.current?.click()}
+              onDraw={handleHandwritingFile}
+              onClear={clearHandwriting}
+              onChangeLine={updateExtractedLine}
+              onRemoveLine={removeExtractedLine}
+              onSubmit={handleSubmitHandwriting}
+              activeStepNumber={lineIdx + 1}
+              totalSteps={expectedLines}
+              lastWrong={lastAttemptOnCurrent && !lastAttemptOnCurrent.correct ? lastAttemptOnCurrent : null}
+              flow={flow}
+              onStartStroke={() => {
+                // Student is writing again — abort any pending OCR call and
+                // clear the chip so it doesn't display stale info.
+                if (ocrAbortRef.current) {
+                  ocrAbortRef.current.abort();
+                  ocrAbortRef.current = null;
+                }
+                if (flowFadeTimer.current) clearTimeout(flowFadeTimer.current);
+                setFlow(null);
+              }}
+            />
+          )}
+
+          {/* Notebook: only accepted (correct) lines are recorded here. */}
           <Card>
             <CardContent className="py-2">
               <div className="flex items-center justify-between border-b border-rule pb-2 mb-3">
@@ -562,33 +705,53 @@ function ExamRunner({ examId }: { examId: number }) {
                   {t("notebook.yourWork")}
                 </span>
                 <span className="font-mono text-[10px] uppercase tracking-[0.24em] text-muted-foreground tabular-nums">
-                  {state.lines.filter((l) => l.correct).length}✓
-                  {"  "}
-                  {state.lines.filter((l) => !l.correct).length > 0
-                    ? `· ${state.lines.filter((l) => !l.correct).length}✗`
-                    : ""}
+                  {state.acceptedThrough + 1}/{expectedLines}✓
                 </span>
               </div>
 
               <div className="rounded-md border border-rule bg-card notebook-rules px-2 py-3">
-                {state.lines.length === 0 && state.status !== "done" && (
+                {state.acceptedThrough < 0 && state.status !== "done" && (
                   <p className="px-3 py-2 text-sm text-muted-foreground italic">
                     {t("notebook.willAppear")}
                   </p>
                 )}
                 <ol className="space-y-1">
-                  {state.lines.map((line, i) => (
-                    <SubmittedLineRow key={i} index={i} line={line} />
-                  ))}
+                  {state.lines
+                    .filter(
+                      (l) => l.correct && l.lineIndex <= state.acceptedThrough,
+                    )
+                    // Pick the correct attempt for each line index (in case
+                    // there were retries before acceptance).
+                    .reduce<LineRecord[]>((acc, l) => {
+                      if (!acc.some((a) => a.lineIndex === l.lineIndex)) acc.push(l);
+                      return acc;
+                    }, [])
+                    .sort((a, b) => a.lineIndex - b.lineIndex)
+                    .map((line) => (
+                      <SubmittedLineRow
+                        key={line.lineIndex}
+                        index={line.lineIndex}
+                        line={line}
+                      />
+                    ))}
                 </ol>
 
                 {state.status !== "done" && (
                   <div className="mt-3 rounded-md border border-rule bg-background/60 p-3 space-y-2">
                     <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
-                      <span className="step-counter inline-flex h-5 w-5 items-center justify-center rounded-full bg-mark text-[10px] text-primary-foreground">
+                      <span
+                        className={
+                          "step-counter inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] text-primary-foreground " +
+                          (lastAttemptOnCurrent && !lastAttemptOnCurrent.correct
+                            ? "bg-destructive"
+                            : "bg-mark")
+                        }
+                      >
                         {lineIdx + 1}
                       </span>
-                      {t("notebook.nextStep")}
+                      {lastAttemptOnCurrent && !lastAttemptOnCurrent.correct
+                        ? t("notebook.tryAgain", { number: lineIdx + 1 })
+                        : t("notebook.nextStep")}
                     </div>
                     <MathField
                       value={state.draft}
@@ -636,6 +799,19 @@ function ExamRunner({ examId }: { examId: number }) {
                         </pre>
                       </details>
                     </div>
+                    {lastAttemptOnCurrent &&
+                      !lastAttemptOnCurrent.correct &&
+                      lastAttemptOnCurrent.explanation && (
+                        <Alert variant="destructive" className="mt-2">
+                          <XCircle className="h-4 w-4" />
+                          <AlertTitle>
+                            = {lastAttemptOnCurrent.latex}
+                          </AlertTitle>
+                          <AlertDescription>
+                            {lastAttemptOnCurrent.explanation}
+                          </AlertDescription>
+                        </Alert>
+                      )}
                     {state.hint && (
                       <Alert className="mt-2 border-mark/40">
                         <Lightbulb className="h-4 w-4" />
@@ -679,18 +855,6 @@ function ExamRunner({ examId }: { examId: number }) {
               />
             </CardContent>
           </Card>
-
-          {state.status !== "done" && (
-            <HandwritingCard
-              hw={hw}
-              onPickFile={() => fileInputRef.current?.click()}
-              onDraw={handleHandwritingFile}
-              onClear={clearHandwriting}
-              onChangeLine={updateExtractedLine}
-              onRemoveLine={removeExtractedLine}
-              onSubmit={handleSubmitHandwriting}
-            />
-          )}
 
           <Card>
             <CardContent className="py-2">
@@ -755,6 +919,14 @@ function SubmittedLineRow({ index, line }: { index: number; line: LineRecord }) 
   );
 }
 
+type FlowState = {
+  phase: "reading" | "checking" | "done";
+  latex?: string;
+  ocrMs?: number;
+  verifyMs?: number;
+  correct?: boolean;
+};
+
 function HandwritingCard({
   hw,
   onPickFile,
@@ -763,6 +935,11 @@ function HandwritingCard({
   onChangeLine,
   onRemoveLine,
   onSubmit,
+  activeStepNumber,
+  totalSteps,
+  lastWrong,
+  flow,
+  onStartStroke,
 }: {
   hw: Handwriting;
   onPickFile: () => void;
@@ -771,10 +948,24 @@ function HandwritingCard({
   onChangeLine: (i: number, v: string) => void;
   onRemoveLine: (i: number) => void;
   onSubmit: () => void;
+  activeStepNumber: number;
+  totalSteps: number;
+  lastWrong: LineRecord | null;
+  flow: FlowState | null;
+  onStartStroke: () => void;
 }) {
   const [tab, setTab] = useState<"draw" | "upload">("draw");
   const busy = hw.status === "extracting" || hw.status === "verifying";
   const t = useTranslations("exam.handwriting");
+  const tNotebook = useTranslations("exam.notebook");
+  const drawRef = useRef<DrawCanvasHandle>(null);
+
+  // Clear the canvas automatically whenever the active step changes (a line
+  // was accepted) or when a retry-cycle begins so the surface is ready for
+  // the next attempt without a click.
+  useEffect(() => {
+    drawRef.current?.clear();
+  }, [activeStepNumber, lastWrong?.lineIndex, lastWrong?.latex]);
 
   return (
     <Card>
@@ -783,6 +974,10 @@ function HandwritingCard({
           <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.28em] text-mark">
             <PencilLine className="h-3 w-3" />
             {t("title")}
+            <span className="text-muted-foreground">
+              · {tNotebook("stepInputAria", { number: activeStepNumber })} /{" "}
+              {totalSteps}
+            </span>
           </div>
           <div className="inline-flex rounded-md border border-rule bg-background p-0.5">
             <TabBtn active={tab === "draw"} onClick={() => setTab("draw")} icon={<Pencil className="h-3 w-3" />}>
@@ -794,11 +989,32 @@ function HandwritingCard({
           </div>
         </div>
 
+        {lastWrong && (
+          <Alert variant="destructive">
+            <XCircle className="h-4 w-4" />
+            <AlertTitle>
+              {tNotebook("tryAgain", { number: activeStepNumber })}
+            </AlertTitle>
+            {lastWrong.explanation && (
+              <AlertDescription>{lastWrong.explanation}</AlertDescription>
+            )}
+          </Alert>
+        )}
+
         {tab === "draw" ? (
-          <DrawCanvas onRecognize={onDraw} busy={busy} disabled={hw.lines.length > 0} />
+          <DrawCanvas
+            ref={drawRef}
+            onRecognize={onDraw}
+            busy={busy}
+            disabled={hw.lines.length > 0}
+            autoRecognize
+            onStartStroke={onStartStroke}
+          />
         ) : (
           <UploadDropZone onPick={onPickFile} disabled={busy} />
         )}
+
+        {flow && <FlowChip flow={flow} />}
 
         {hw.previewUrl && tab === "upload" && (
           <div className="overflow-hidden rounded border border-rule bg-background/40">
@@ -879,6 +1095,59 @@ function HandwritingCard({
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function FlowChip({ flow }: { flow: FlowState }) {
+  const t = useTranslations("exam.flow");
+  // Live timer so the student can SEE the latency budget tick.
+  const [now, setNow] = useState(() => Date.now());
+  const tickStartRef = useRef<number>(Date.now());
+  useEffect(() => {
+    tickStartRef.current = Date.now();
+    if (flow.phase === "done") return;
+    const id = setInterval(() => setNow(Date.now()), 100);
+    return () => clearInterval(id);
+  }, [flow.phase, flow.latex]);
+
+  const reading =
+    flow.ocrMs ?? (flow.phase === "reading" ? now - tickStartRef.current : 0);
+  const checking =
+    flow.verifyMs ?? (flow.phase === "checking" ? now - tickStartRef.current : 0);
+
+  const statusIcon =
+    flow.phase === "done"
+      ? flow.correct
+        ? <CheckCircle2 className="h-3.5 w-3.5 text-correct" />
+        : <XCircle className="h-3.5 w-3.5 text-mark" />
+      : <Loader2 className="h-3.5 w-3.5 animate-spin" />;
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-md border border-rule bg-card/60 px-3 py-1.5">
+      <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+        {statusIcon}
+        {flow.phase === "reading"
+          ? t("reading")
+          : flow.phase === "checking"
+            ? t("checking")
+            : flow.correct
+              ? t("correct")
+              : t("wrong")}
+      </span>
+      {flow.latex && (
+        <span className="max-w-[18rem] truncate font-mono text-xs text-foreground">
+          = {flow.latex}
+        </span>
+      )}
+      <span className="ml-auto flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground tabular-nums">
+        <span>
+          {t("read")} {(reading / 1000).toFixed(1)}s
+        </span>
+        <span>
+          {t("check")} {(checking / 1000).toFixed(1)}s
+        </span>
+      </span>
+    </div>
   );
 }
 

@@ -67,6 +67,7 @@ export type SubmitLineResponse = {
   is_final_for_question: boolean;
   expected_total_lines: number;
   partial_score: number;
+  line_id: number;
 };
 
 export type SubmissionLine = {
@@ -244,6 +245,21 @@ export async function submitLine(
   return jsonOrThrow<SubmitLineResponse>(res);
 }
 
+export async function explainLine(
+  lineId: number,
+  locale: string = "en",
+): Promise<{ explanation: string }> {
+  const res = await fetch(
+    `${BASE}/api/submission-lines/${lineId}/explain`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeader() },
+      body: JSON.stringify({ locale }),
+    },
+  );
+  return jsonOrThrow<{ explanation: string }>(res);
+}
+
 export async function requestHint(
   submissionId: number,
   questionId: number,
@@ -328,6 +344,7 @@ export async function fetchSubmission(id: number): Promise<SubmissionDetail> {
 export async function extractHandwriting(
   questionId: number,
   image: File,
+  opts: { signal?: AbortSignal } = {},
 ): Promise<{ lines: ExtractedLine[] }> {
   const form = new FormData();
   form.append("question_id", String(questionId));
@@ -336,6 +353,7 @@ export async function extractHandwriting(
     method: "POST",
     headers: authHeader(),
     body: form,
+    signal: opts.signal,
   });
   return jsonOrThrow<{ lines: ExtractedLine[] }>(res);
 }

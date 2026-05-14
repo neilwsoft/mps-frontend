@@ -114,6 +114,7 @@
       "yourWork": "Your work",
       "willAppear": "Your worked solution will appear here, line by line.",
       "nextStep": "Next step",
+      "tryAgain": "Try line {number} again",
       "stepInputAria": "Solution line {number}",
       "checkLine": "Check this line",
       "checking": "Checking…",
@@ -123,6 +124,14 @@
       "doneAll": "All {count} steps submitted.",
       "continueNext": "Continue to question {number} →",
       "donePrompt": "Submit & grade when you're ready."
+    },
+    "flow": {
+      "reading": "Reading",
+      "checking": "Checking",
+      "correct": "Correct",
+      "wrong": "Try again",
+      "read": "read",
+      "check": "check"
     },
     "hint": {
       "buttonIdle": "Hint (-1 point)",
@@ -146,6 +155,7 @@
       "reading": "Reading lines…",
       "errorTitle": "Could not read it",
       "errorReadFallback": "Failed to read image",
+      "errorIllegible": "Couldn't read your handwriting. Write a little larger or more clearly, then pause briefly.",
       "errorVerifyFallback": "Verify failed",
       "detectedHeader": "Detected — review then submit",
       "editLowConfidence": "edit any low-confidence line before submit",
@@ -160,7 +170,8 @@
         "recognize": "Recognize",
         "reading": "Reading…",
         "undo": "Undo",
-        "clear": "Clear"
+        "clear": "Clear",
+        "idleAutoSubmit": "Pause to submit"
       }
     }
   },

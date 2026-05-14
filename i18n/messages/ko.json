@@ -114,6 +114,7 @@
       "yourWork": "나의 풀이",
       "willAppear": "풀이가 한 줄씩 여기에 기록됩니다.",
       "nextStep": "다음 단계",
+      "tryAgain": "{number}번째 줄을 다시 시도하세요",
       "stepInputAria": "풀이 줄 {number}",
       "checkLine": "이 줄 채점",
       "checking": "채점 중…",
@@ -123,6 +124,14 @@
       "doneAll": "{count}단계 모두 제출되었습니다.",
       "continueNext": "{number}번 문제로 이동 →",
       "donePrompt": "준비되면 제출 후 채점하세요."
+    },
+    "flow": {
+      "reading": "읽는 중",
+      "checking": "확인 중",
+      "correct": "정답",
+      "wrong": "다시 시도",
+      "read": "읽기",
+      "check": "확인"
     },
     "hint": {
       "buttonIdle": "힌트 (-1점)",
@@ -146,6 +155,7 @@
       "reading": "글씨를 읽는 중…",
       "errorTitle": "글씨를 읽을 수 없습니다",
       "errorReadFallback": "이미지를 읽을 수 없습니다",
+      "errorIllegible": "손글씨를 읽지 못했어요. 조금 더 크고 또렷하게 적은 뒤 잠시 멈춰 보세요.",
       "errorVerifyFallback": "확인에 실패했습니다",
       "detectedHeader": "인식 완료 — 확인 후 제출",
       "editLowConfidence": "신뢰도가 낮은 줄은 제출 전에 수정하세요",
@@ -160,7 +170,8 @@
         "recognize": "인식",
         "reading": "읽는 중…",
         "undo": "실행 취소",
-        "clear": "지우기"
+        "clear": "지우기",
+        "idleAutoSubmit": "잠시 멈추면 자동 제출"
       }
     }
   },
